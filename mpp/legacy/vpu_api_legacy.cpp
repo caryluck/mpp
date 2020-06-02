@@ -341,7 +341,17 @@ VpuApiLegacy::VpuApiLegacy() :
     fd_input(-1),
     fd_output(-1),
     mEosSet(0),
-    enc_cfg(NULL)
+    enc_cfg(NULL),
+    ltr_frames(0),
+    hdr_on_idr(0),
+    add_prefix(0),
+    slice_mbs(0),
+    updated(0),
+    max_tid(0),
+    mark_ltr(0),
+    use_ltr(0),
+    frame_qp(0),
+    base_layer_pid(0)
 {
     vpu_api_dbg_func("enter\n");
 

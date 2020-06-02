@@ -100,6 +100,14 @@ typedef enum VPU_API_CMD {
     VPU_API_ENC_SET_VEPU22_CTU_QP,
     VPU_API_ENC_SET_VEPU22_ROI,
 
+    /* dynamic configure */
+    VPU_API_ENC_EXTRA_MODE = 0x4000,
+    VPU_API_ENC_SET_MAX_TID,
+    VPU_API_ENC_SET_MARK_LTR,
+    VPU_API_ENC_SET_USE_LTR,
+    VPU_API_ENC_SET_FRAME_QP,
+    VPU_API_ENC_SET_BASE_LAYER_PID,
+
 } VPU_API_CMD;
 
 typedef struct {
@@ -261,8 +269,10 @@ typedef enum VPU_FRAME_ERR {
 } VPU_FRAME_ERR;
 
 typedef struct EncParameter {
-    RK_S32 width;
-    RK_S32 height;
+    RK_S16 width;
+    RK_S16 sar_width;
+    RK_S16 height;
+    RK_S16 sar_height;
     RK_S32 rc_mode;                 /* 0 - CQP mode; 1 - CBR mode; */
     RK_S32 bitRate;                 /* target bitrate */
     RK_S32 framerate;
@@ -274,7 +284,14 @@ typedef struct EncParameter {
     RK_S32 framerateout;
     RK_S32 profileIdc;
     RK_S32 levelIdc;
-    RK_S32 reserved[3];
+    RK_S32 extra_mode;              /* reserved[3] eable the options below */
+    /* static configure */
+    RK_S32 max_tid      : 8;        /* max temporal layer id */
+    RK_S32 ltr_frames   : 8;        /* max long-term reference frame count */
+    RK_S32 hdr_on_idr   : 8;        /* sps/pps header with IDR frame */
+    RK_S32 add_prefix   : 8;        /* add prefix before each frame */
+    RK_S32 slice_mbs    : 16;       /* macroblock row count for each slice */
+    RK_S32 reserved     : 16;
 } EncParameter_t;
 
 typedef struct EXtraCfg {

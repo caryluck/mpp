@@ -36,6 +36,12 @@
 #define vpu_api_dbg_input(fmt, ...)     vpu_api_dbg_f(VPU_API_DBG_INPUT, fmt, ## __VA_ARGS__)
 #define vpu_api_dbg_output(fmt, ...)    vpu_api_dbg_f(VPU_API_DBG_OUTPUT, fmt, ## __VA_ARGS__)
 
+#define VPU_API_ENC_MAX_TID_UPDATED     (0x00000001)
+#define VPU_API_ENC_MARK_LTR_UPDATED    (0x00000002)
+#define VPU_API_ENC_USE_LTR_UPDATED     (0x00000004)
+#define VPU_API_ENC_FRAME_QP_UPDATED    (0x00000008)
+#define VPU_API_ENC_BASE_PID_UPDATED    (0x00000010)
+
 extern RK_U32 vpu_api_debug;
 
 typedef enum {
@@ -82,6 +88,20 @@ private:
 
     EncParameter_t enc_param;
     MppEncCfg enc_cfg;
+
+    /* static configure */
+    RK_S32 ltr_frames;
+    RK_S32 hdr_on_idr;
+    RK_S32 add_prefix;
+    RK_S32 slice_mbs;
+
+    /* dynamic configure */
+    RK_U32 updated;
+    RK_S32 max_tid;
+    RK_S32 mark_ltr;
+    RK_S32 use_ltr;
+    RK_S32 frame_qp;
+    RK_S32 base_layer_pid;
 };
 
 #endif /*_VPU_API_H_*/
