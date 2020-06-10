@@ -384,13 +384,16 @@ static MPP_RET h264e_proc_h264_cfg(MppEncH264Cfg *dst, MppEncH264Cfg *src)
         dst->intra_refresh_mode = src->intra_refresh_mode;
         dst->intra_refresh_arg = src->intra_refresh_arg;
     }
-    if (change & MPP_ENC_H264_CFG_CHANGE_SLICE_MODE) {
-        dst->slice_mode = src->slice_mode;
-        dst->slice_arg = src->slice_arg;
-    }
-    if (change & MPP_ENC_H264_CFG_CHANGE_VUI) {
+    if (change & MPP_ENC_H264_CFG_CHANGE_MAX_LTR)
+        dst->max_ltr_frames = src->max_ltr_frames;
+    if (change & MPP_ENC_H264_CFG_CHANGE_MAX_TID)
+        dst->max_tid = src->max_tid;
+    if (change & MPP_ENC_H264_CFG_CHANGE_ADD_PREFIX)
+        dst->add_prefix = src->add_prefix;
+    if (change & MPP_ENC_H264_CFG_CHANGE_BASE_LAYER_PID)
+        dst->base_layer_pid = src->base_layer_pid;
+    if (change & MPP_ENC_H264_CFG_CHANGE_VUI)
         dst->vui = src->vui;
-    }
 
     dst->change |= change;
     return ret;
