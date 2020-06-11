@@ -226,7 +226,7 @@ static MPP_RET hal_h264e_vepu2_get_task_v2(void *hal, HalEncTask *task)
     hw_addr->refr[1] = hw_addr->refr[0] + (yuv_size << 10);
 
     h264e_vepu_stream_amend_config(&ctx->amend, task->packet, ctx->cfg,
-                                   ctx->slice, &task->rc_task->frm);
+                                   ctx->slice);
 
     hal_h264e_dbg_func("leave %p\n", hal);
 

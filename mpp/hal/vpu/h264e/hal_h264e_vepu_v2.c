@@ -777,15 +777,12 @@ MPP_RET h264e_vepu_stream_amend_deinit(HalH264eVepuStreamAmend *ctx)
 
 MPP_RET h264e_vepu_stream_amend_config(HalH264eVepuStreamAmend *ctx,
                                        MppPacket packet, MppEncCfgSet *cfg,
-                                       H264eSlice *slice, EncFrmStatus *frm)
+                                       H264eSlice *slice)
 {
     MppEncRefCfgImpl *ref = (MppEncRefCfgImpl *)cfg->ref_cfg;
-    MppEncCpbInfo *cpb = &ref->cpb_info;
 
     if (ref->lt_cfg_cnt || ref->st_cfg_cnt > 1) {
         ctx->enable = 1;
-        ctx->max_tid = cpb->max_st_tid;
-        ctx->temporal_id = frm->temporal_id;
         ctx->slice_enabled = 0;
         ctx->slice = slice;
 
@@ -825,8 +822,6 @@ MPP_RET h264e_vepu_stream_amend_proc(HalH264eVepuStreamAmend *ctx)
     RK_U8  tail_tmp = 0;
     RK_U8 *dst_buf = NULL;
     RK_S32 buf_size;
-    RK_S32 prefix_bit = 0;
-    RK_S32 prefix_byte = 0;
     RK_S32 final_len = 0;
 
     {
@@ -848,8 +843,6 @@ MPP_RET h264e_vepu_stream_amend_proc(HalH264eVepuStreamAmend *ctx)
     memset(ctx->src_buf, 0, ctx->buf_size);
     dst_buf = ctx->dst_buf;
     buf_size = ctx->buf_size;
-    slice->is_last = 0;
-    slice->is_first = 1;
     p += base;
 
     do {
@@ -861,13 +854,11 @@ MPP_RET h264e_vepu_stream_amend_proc(HalH264eVepuStreamAmend *ctx)
 
             memcpy(ctx->src_buf, p, nal_len);
             p += nal_len;
-            slice->is_last = (len == 0);
 
             hal_h264e_dbg_amend("nal_len %d last byte %1x", nal_len, ctx->src_buf[nal_len - 1]);
         } else {
             memcpy(ctx->src_buf, p, len);
             nal_len = len;
-            slice->is_last = 1;
         }
 
         H264eSlice slice_rd;
@@ -877,29 +868,6 @@ MPP_RET h264e_vepu_stream_amend_proc(HalH264eVepuStreamAmend *ctx)
         slice_rd.pic_order_cnt_type = 2;
 
         hw_len_bit = h264e_slice_read(&slice_rd, ctx->src_buf, size);
-
-        if (ctx->max_tid && slice->is_first) {
-            H264ePrefixNal prefix;
-
-            prefix.idr_flag = slice->idr_flag;
-            prefix.nal_ref_idc = slice->nal_reference_idc;
-            prefix.priority_id = 0;
-            prefix.no_inter_layer_pred_flag = 1;
-            prefix.dependency_id = 0;
-            prefix.quality_id = 0;
-            prefix.temporal_id = ctx->temporal_id;
-            prefix.use_ref_base_pic_flag = 0;
-            prefix.discardable_flag = 0;
-            prefix.output_flag = 1;
-
-            prefix_bit = h264e_slice_write_prefix_nal_unit_svc(&prefix, dst_buf, buf_size);
-            prefix_byte = prefix_bit /= 8;
-            hal_h264e_dbg_amend("prefix_len %d\n", prefix_byte);
-            dst_buf += prefix_byte;
-            buf_size -= prefix_byte;
-
-            slice->is_first = 0;
-        }
 
         // write new header to header buffer
         slice->qp_delta = slice_rd.qp_delta;
@@ -954,7 +922,6 @@ MPP_RET h264e_vepu_stream_amend_proc(HalH264eVepuStreamAmend *ctx)
 
         if (!slice->is_multi_slice || !len) {
             p = mpp_packet_get_pos(pkt);
-            final_len += prefix_byte;
             memcpy(p + base, ctx->dst_buf, final_len);
 
             if (slice->entropy_coding_mode) {

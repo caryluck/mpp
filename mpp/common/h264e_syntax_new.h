@@ -296,8 +296,6 @@ typedef struct H264eSlice_t {
 
     /* for multi-slice writing */
     RK_S32      is_multi_slice;
-    RK_S32      is_first;
-    RK_S32      is_last;
 } H264eSlice;
 
 /*

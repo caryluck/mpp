@@ -152,11 +152,7 @@ typedef void *HalH264eVepuMbRcCtx;
 typedef struct HalH264eVepuStreamAmend_t {
     RK_S32          enable;
     H264eSlice      *slice;
-    RK_S32          max_tid;
-    RK_S32          temporal_id;
     RK_S32          slice_enabled;
-    RK_S32          is_first_slice;
-    RK_S32          is_last_slice;
 
     RK_U8           *src_buf;
     RK_U8           *dst_buf;
@@ -214,7 +210,7 @@ MPP_RET h264e_vepu_stream_amend_init(HalH264eVepuStreamAmend *ctx);
 MPP_RET h264e_vepu_stream_amend_deinit(HalH264eVepuStreamAmend *ctx);
 MPP_RET h264e_vepu_stream_amend_config(HalH264eVepuStreamAmend *ctx,
                                        MppPacket packet, MppEncCfgSet *cfg,
-                                       H264eSlice *slice, EncFrmStatus *frm);
+                                       H264eSlice *slice);
 MPP_RET h264e_vepu_stream_amend_proc(HalH264eVepuStreamAmend *ctx);
 
 #ifdef __cplusplus
