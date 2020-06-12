@@ -325,8 +325,8 @@ static EncFrmStatus *get_ref_from_cpb(EncVirtualCpb *cpb, EncFrmStatus *frm)
                               ref->is_lt_ref ? "lt" : "st",
                               ref->is_lt_ref ? ref->lt_idx : 0);
         else
-            mpp_err_f("frm %d found ref %d but it is invalid\n",
-                      frm->seq_idx, ref->seq_idx);
+            mpp_err_f("frm %d found mode %d arg %d -> ref %d but it is invalid\n",
+                      frm->seq_idx, ref_mode, ref_arg, ref->seq_idx);
     } else {
         ref = NULL;
     }
@@ -444,6 +444,7 @@ static void store_ref_to_cpb(EncVirtualCpb *cpb, EncFrmStatus *frm)
 
     if (frm->is_lt_ref) {
         cpb->lt_idx_refs[lt_idx].val = frm->val;
+        cpb->st_tid_refs[tid].val = frm->val;
         cpb->mode_refs[REF_TO_PREV_REF_FRM].val = frm->val;
         cpb->mode_refs[REF_TO_PREV_LT_REF].val = frm->val;
 
@@ -704,6 +705,32 @@ MPP_RET mpp_enc_refs_get_cpb(MppEncRefs refs, EncCpbStatus *status)
             lt_cfg->cnt = 0;
             lt_cfg->idx++;
         }
+    }
+
+    /* step 4. process force flags and force ref_mode */
+    if (usr_cfg->force_flag & ENC_FORCE_LT_REF_IDX) {
+        frm->is_non_ref = 0;
+        frm->is_lt_ref = 1;
+        frm->lt_idx = usr_cfg->force_lt_idx;
+        /* lt_ref will be forced to tid 0 */
+        frm->temporal_id = 0;
+
+        /* reset st_cfg to next loop */
+        cpb->st_cfg_repeat_pos = 0;
+        cpb->st_cfg_pos = 1;
+
+        for (i = 0; i < cfg->lt_cfg_cnt; i++, lt_cfg++) {
+            lt_cfg->cnt = 0;
+            lt_cfg->idx = 0;
+        }
+        usr_cfg->force_flag &= ~ENC_FORCE_LT_REF_IDX;
+    }
+
+    if (usr_cfg->force_flag & ENC_FORCE_REF_MODE) {
+        frm->ref_mode = usr_cfg->force_ref_mode;
+        frm->ref_arg = usr_cfg->force_ref_arg;
+
+        usr_cfg->force_flag &= ~ENC_FORCE_REF_MODE;
     }
 
     /* step 4. try find ref by the ref_mode */
