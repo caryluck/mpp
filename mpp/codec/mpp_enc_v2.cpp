@@ -692,6 +692,7 @@ void *mpp_enc_thread(void *data)
     EncRcTask *rc_task = &enc->rc_task;
     EncCpbStatus *cpb = &rc_task->cpb;
     EncFrmStatus *frm = &rc_task->frm;
+    MppEncRefFrmUsrCfg *frm_cfg = &enc->frm_cfg;
     EncTask task;
     HalTaskInfo *task_info = &task.info;
     HalEncTask *hal_task = &task_info->enc;
@@ -702,6 +703,8 @@ void *mpp_enc_thread(void *data)
     MPP_RET ret = MPP_OK;
     MppFrame frame = NULL;
     MppPacket packet = NULL;
+    MppMeta frm_meta = NULL;
+    MppMeta pkt_meta = NULL;
 
     memset(&task, 0, sizeof(task));
 
@@ -924,13 +927,39 @@ void *mpp_enc_thread(void *data)
         hal_task->length = mpp_packet_get_length(packet);
         mpp_task_meta_get_buffer(task_in, KEY_MOTION_INFO, &hal_task->mv_info);
 
-        // 15. setup user_cfg to dpb
-        if (enc->frm_cfg.force_flag) {
-            mpp_enc_refs_set_usr_cfg(enc->refs, &enc->frm_cfg);
-            enc->frm_cfg.force_flag = 0;
+        /* 14. check frm_meta data force key in input frame */
+        frm_meta = mpp_frame_get_meta(frame);
+        {
+            RK_S32 force_lt_idx = -1;
+            RK_S32 force_use_lt_idx = -1;
+            RK_S32 force_frame_qp = -1;
+            RK_S32 base_layer_pid = 0;
+
+            mpp_meta_get_s32(frm_meta, KEY_ENC_MARK_LTR, &force_lt_idx);
+            mpp_meta_get_s32(frm_meta, KEY_ENC_USE_LTR, &force_use_lt_idx);
+            mpp_meta_get_s32(frm_meta, KEY_ENC_FRAME_QP, &force_frame_qp);
+            mpp_meta_get_s32(frm_meta, KEY_ENC_BASE_LAYER_PID, &base_layer_pid);
+
+            if (force_lt_idx >= 0) {
+                frm_cfg->force_flag |= ENC_FORCE_LT_REF_IDX;
+                frm_cfg->force_lt_idx = force_lt_idx;
+            }
+
+            if (force_use_lt_idx >= 0) {
+                frm_cfg->force_flag |= ENC_FORCE_REF_MODE;
+                frm_cfg->force_ref_mode = REF_TO_LT_REF_IDX;
+                frm_cfg->force_ref_arg = force_use_lt_idx;
+            }
         }
 
-        // 14. backup dpb
+
+        // 14. setup user_cfg to dpb
+        if (frm_cfg->force_flag) {
+            mpp_enc_refs_set_usr_cfg(enc->refs, frm_cfg);
+            frm_cfg->force_flag = 0;
+        }
+
+        // 15. backup dpb
         enc_dbg_detail("task %d enc start\n", frm->seq_idx);
         task.status.enc_backup = 1;
         RUN_ENC_IMPL_FUNC(enc_impl_start, impl, hal_task, mpp, ret);
@@ -1007,9 +1036,8 @@ void *mpp_enc_thread(void *data)
 
         {
             MppEncUserData *user_data = NULL;
-            MppMeta meta = mpp_frame_get_meta(frame);
 
-            mpp_meta_get_ptr(meta, KEY_USER_DATA, (void**)&user_data);
+            mpp_meta_get_ptr(frm_meta, KEY_USER_DATA, (void**)&user_data);
 
             if (user_data) {
                 if (user_data->pdata && user_data->len) {
@@ -1070,16 +1098,16 @@ void *mpp_enc_thread(void *data)
             frm->reencode_times = 0;
         }
     TASK_DONE:
-        /* setup output packet and meta data */
+        /* setup output packet and frm_meta data */
         mpp_packet_set_length(packet, hal_task->length);
 
         {
-            MppMeta meta = mpp_packet_get_meta(packet);
+            pkt_meta = mpp_packet_get_meta(packet);
 
             if (hal_task->mv_info)
-                mpp_meta_set_buffer(meta, KEY_MOTION_INFO, hal_task->mv_info);
+                mpp_meta_set_buffer(pkt_meta, KEY_MOTION_INFO, hal_task->mv_info);
 
-            mpp_meta_set_s32(meta, KEY_OUTPUT_INTRA, frm->is_intra);
+            mpp_meta_set_s32(pkt_meta, KEY_OUTPUT_INTRA, frm->is_intra);
         }
 
     TASK_RETURN:

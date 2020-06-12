@@ -80,6 +80,12 @@ typedef enum MppMetaKey_e {
     KEY_OSD_DATA                = FOURCC_META('o', 's', 'd', ' '),
     KEY_USER_DATA               = FOURCC_META('u', 's', 'r', 'd'),
 
+    /* frame long-term reference frame operation */
+    KEY_ENC_MARK_LTR            = FOURCC_META('m', 'l', 't', 'r'),
+    KEY_ENC_USE_LTR             = FOURCC_META('u', 'l', 't', 'r'),
+    KEY_ENC_FRAME_QP            = FOURCC_META('f', 'r', 'm', 'q'),
+    KEY_ENC_BASE_LAYER_PID      = FOURCC_META('b', 'p', 'i', 'd'),
+
     /* input motion list for smart p rate control */
     KEY_MV_LIST                 = FOURCC_META('m', 'v', 'l', 't'),
 } MppMetaKey;
