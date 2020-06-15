@@ -692,6 +692,7 @@ void *mpp_enc_thread(void *data)
     EncRcTask *rc_task = &enc->rc_task;
     EncCpbStatus *cpb = &rc_task->cpb;
     EncFrmStatus *frm = &rc_task->frm;
+    EncRcForceCfg *rc_force = &rc_task->force;
     MppEncRefFrmUsrCfg *frm_cfg = &enc->frm_cfg;
     EncTask task;
     HalTaskInfo *task_info = &task.info;
@@ -949,6 +950,14 @@ void *mpp_enc_thread(void *data)
                 frm_cfg->force_flag |= ENC_FORCE_REF_MODE;
                 frm_cfg->force_ref_mode = REF_TO_LT_REF_IDX;
                 frm_cfg->force_ref_arg = force_use_lt_idx;
+            }
+
+            if (force_frame_qp >= 0) {
+                rc_force->force_flag |= ENC_RC_FORCE_QP;
+                rc_force->force_qp = force_frame_qp;
+            } else {
+                rc_force->force_flag &= ~ENC_RC_FORCE_QP;
+                rc_force->force_qp = -1;
             }
         }
 

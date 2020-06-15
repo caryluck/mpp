@@ -796,6 +796,7 @@ MPP_RET rc_model_v2_hal_start(void *ctx, EncRcTask *task)
     RcModelV2Ctx *p = (RcModelV2Ctx *)ctx;
     EncFrmStatus *frm = &task->frm;
     EncRcTaskInfo *info = &task->info;
+    EncRcForceCfg *force = &task->force;
     RK_S32 mb_w = MPP_ALIGN(p->usr_cfg.width, 16) / 16;
     RK_S32 mb_h = MPP_ALIGN(p->usr_cfg.height, 16) / 16;
     RK_S32 bit_min = info->bit_min;
@@ -805,9 +806,9 @@ MPP_RET rc_model_v2_hal_start(void *ctx, EncRcTask *task)
     RK_S32 quality_max = info->quality_max;
     RK_S32 quality_target = info->quality_target;
 
-    if (p->usr_cfg.mode == RC_FIXQP) {
+    if (p->usr_cfg.mode == RC_FIXQP)
         return MPP_OK;
-    }
+
     rc_dbg_func("enter p %p task %p\n", p, task);
 
     rc_dbg_rc("seq_idx %d intra %d\n", frm->seq_idx, frm->is_intra);
@@ -876,8 +877,16 @@ MPP_RET rc_model_v2_hal_start(void *ctx, EncRcTask *task)
         }
     }
 
-    p->start_qp = mpp_clip( p->start_qp, info->quality_min, info->quality_max);
+    p->start_qp = mpp_clip(p->start_qp, info->quality_min, info->quality_max);
     info->quality_target = p->start_qp;
+
+
+    if (force->force_flag & ENC_RC_FORCE_QP) {
+        RK_S32 qp = force->force_qp;
+        info->quality_target = qp;
+        info->quality_max = qp;
+        info->quality_min = qp;
+    }
 
     rc_dbg_rc("bitrate [%d : %d : %d] -> [%d : %d : %d]\n",
               bit_min, bit_target, bit_max,
