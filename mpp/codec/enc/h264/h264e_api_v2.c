@@ -590,6 +590,16 @@ static MPP_RET h264e_proc_hal(void *ctx, HalEncTask *task)
         }
     }
 
+    /* check base_layer_pid */
+    {
+        MppMeta meta = mpp_frame_get_meta(task->frame);
+        RK_S32 base_layer_pid = -1;
+
+        mpp_meta_get_s32(meta, KEY_ENC_BASE_LAYER_PID, &base_layer_pid);
+        if (base_layer_pid >= 0)
+            h264->base_layer_pid = base_layer_pid;
+    }
+
     /* NOTE: prefix nal is added after SEI packet and before hw_stream */
     if (h264->add_prefix || h264->max_tid) {
         H264ePrefixNal *prefix = &p->prefix;

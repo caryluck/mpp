@@ -934,12 +934,10 @@ void *mpp_enc_thread(void *data)
             RK_S32 force_lt_idx = -1;
             RK_S32 force_use_lt_idx = -1;
             RK_S32 force_frame_qp = -1;
-            RK_S32 base_layer_pid = 0;
 
             mpp_meta_get_s32(frm_meta, KEY_ENC_MARK_LTR, &force_lt_idx);
             mpp_meta_get_s32(frm_meta, KEY_ENC_USE_LTR, &force_use_lt_idx);
             mpp_meta_get_s32(frm_meta, KEY_ENC_FRAME_QP, &force_frame_qp);
-            mpp_meta_get_s32(frm_meta, KEY_ENC_BASE_LAYER_PID, &base_layer_pid);
 
             if (force_lt_idx >= 0) {
                 frm_cfg->force_flag |= ENC_FORCE_LT_REF_IDX;
