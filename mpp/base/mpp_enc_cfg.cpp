@@ -191,6 +191,10 @@ static const char *cfg_func_names[] = {
     ENTRY(h264, qp_max_i,       S32, RK_S32,            MPP_ENC_H264_CFG_CHANGE_QP_LIMIT,       codec.h264, qp_max) \
     ENTRY(h264, qp_min_i,       S32, RK_S32,            MPP_ENC_H264_CFG_CHANGE_QP_LIMIT,       codec.h264, qp_min) \
     ENTRY(h264, qp_step,        S32, RK_S32,            MPP_ENC_H264_CFG_CHANGE_QP_LIMIT,       codec.h264, qp_max_step) \
+    ENTRY(h264, max_tid,        S32, RK_S32,            MPP_ENC_H264_CFG_CHANGE_MAX_TID,        codec.h264, max_tid) \
+    ENTRY(h264, max_ltr,        S32, RK_S32,            MPP_ENC_H264_CFG_CHANGE_MAX_LTR,        codec.h264, max_ltr_frames) \
+    ENTRY(h264, add_prefix,     S32, RK_S32,            MPP_ENC_H264_CFG_CHANGE_ADD_PREFIX,     codec.h264, add_prefix) \
+    ENTRY(h264, base_layer_pid, S32, RK_S32,            MPP_ENC_H264_CFG_CHANGE_BASE_LAYER_PID, codec.h264, base_layer_pid) \
     /* h265 config*/ \
     ENTRY(h265, profile,        S32, RK_S32,            MPP_ENC_H265_CFG_PROFILE_LEVEL_TILER_CHANGE,    codec.h265, profile) \
     ENTRY(h265, level,          S32, RK_S32,            MPP_ENC_H265_CFG_PROFILE_LEVEL_TILER_CHANGE,    codec.h265, level) \
@@ -225,7 +229,7 @@ RK_S32 const_strlen(const char* str)
     return *str ? 1 + const_strlen(str + 1) : 0;
 }
 
-static RK_S32 node_len = ENTRY_TABLE(EXPAND_AS_STRLEN) + 0;
+static RK_S32 node_len = ENTRY_TABLE(EXPAND_AS_STRLEN) + 3;
 
 class MppEncCfgService
 {
