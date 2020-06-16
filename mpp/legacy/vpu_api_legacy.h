@@ -89,12 +89,6 @@ private:
     EncParameter_t enc_param;
     MppEncCfg enc_cfg;
 
-    /* static configure */
-    RK_S32 ltr_frames;
-    RK_S32 hdr_on_idr;
-    RK_S32 add_prefix;
-    RK_S32 slice_mbs;
-
     /* dynamic configure */
     RK_U32 updated;
     RK_S32 max_tid;

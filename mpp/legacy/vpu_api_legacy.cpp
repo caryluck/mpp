@@ -157,110 +157,41 @@ static MPP_RET vpu_api_set_enc_cfg(MppCtx mpp_ctx, MppApi *mpi, MppEncCfg enc_cf
     } break;
     }
 
+    /* setup extra mode flag */
+    if (cfg->extra_mode) {
+        RK_U32 extra_mode   = cfg->extra_mode;
+
+        if (extra_mode & EXTRA_CHANGE_HDR_ON_IDR) {
+            MppEncHeaderMode mode = cfg->hdr_on_idr ?
+                                    MPP_ENC_HEADER_MODE_EACH_IDR :
+                                    MPP_ENC_HEADER_MODE_DEFAULT;
+
+            ret = mpi->control(mpp_ctx, MPP_ENC_SET_HEADER_MODE, &mode);
+            if (ret)
+                mpp_err("setup enc header mode %d failed ret %d\n", mode, ret);
+        }
+
+        if (extra_mode & EXTRA_CHANGE_MAX_TID)
+            mpp_enc_cfg_set_s32(enc_cfg, "h264:max_tid", cfg->max_tid);
+
+        if (extra_mode & EXTRA_CHANGE_LTR_FRMS)
+            mpp_enc_cfg_set_s32(enc_cfg, "h264:max_ltr", cfg->ltr_frames);
+
+        if (extra_mode & EXTRA_CHANGE_ADD_PREFIX)
+            mpp_enc_cfg_set_s32(enc_cfg, "h264:add_prefix", cfg->add_prefix);
+
+        if (extra_mode & EXTRA_CHANGE_SLICE_MBS) {
+            mpp_enc_cfg_set_u32(enc_cfg, "split:mode", MPP_ENC_SPLIT_BY_CTU);
+            mpp_enc_cfg_set_u32(enc_cfg, "split:arg", cfg->slice_mbs);
+        }
+    }
+
     ret = mpi->control(mpp_ctx, MPP_ENC_SET_CFG, enc_cfg);
     if (ret) {
         mpp_err("setup enc config failed ret %d\n", ret);
         goto RET;
     }
-#if 0
-    MppEncCodecCfg codec;
-    MppEncPrepCfg prep;
-    MppEncRcCfg rc;
-    MppEncCodecCfg *codec_cfg = &codec;
-    MppEncPrepCfg *prep_cfg = &prep;
-    MppEncRcCfg *rc_cfg = &rc;
 
-    prep_cfg->change     = MPP_ENC_PREP_CFG_CHANGE_INPUT |
-                           MPP_ENC_PREP_CFG_CHANGE_FORMAT;
-    prep_cfg->width      = width;
-    prep_cfg->height     = height;
-    prep_cfg->hor_stride = MPP_ALIGN(width, 16);
-    prep_cfg->ver_stride = MPP_ALIGN(height, 16);
-    prep_cfg->format     = fmt;
-    ret = mpi->control(mpp_ctx, MPP_ENC_SET_PREP_CFG, prep_cfg);
-    if (ret) {
-        mpp_err("setup preprocess config failed ret %d\n", ret);
-        goto RET;
-    }
-
-    rc_cfg->change  = MPP_ENC_RC_CFG_CHANGE_ALL;
-    if (rc_mode == 0) {
-        /* 0 - constant qp mode: fixed qp */
-        rc_cfg->rc_mode     = MPP_ENC_RC_MODE_FIXQP;
-        rc_cfg->quality     = MPP_ENC_RC_QUALITY_MEDIUM;
-        rc_cfg->bps_target  = bps;
-        rc_cfg->bps_max     = bps * 17 / 16;
-        rc_cfg->bps_min     = bps * 15 / 16;
-    } else if (rc_mode == 1) {
-        /* 1 - constant bitrate: small bps range */
-        rc_cfg->rc_mode     = MPP_ENC_RC_MODE_CBR;
-        rc_cfg->quality     = MPP_ENC_RC_QUALITY_MEDIUM;
-        rc_cfg->bps_target  = bps;
-        rc_cfg->bps_max     = bps * 17 / 16;
-        rc_cfg->bps_min     = bps * 15 / 16;
-    } else {
-        mpp_err("invalid vpu rc mode %d\n", rc_mode);
-    }
-
-    /* fix input / output frame rate */
-    rc_cfg->fps_in_flex     = 0;
-    rc_cfg->fps_in_num      = fps_in;
-    rc_cfg->fps_in_denorm   = 1;
-    rc_cfg->fps_out_flex    = 0;
-    rc_cfg->fps_out_num     = fps_out;
-    rc_cfg->fps_out_denorm  = 1;
-    rc_cfg->gop             = gop;
-    rc_cfg->skip_cnt        = 0;
-    ret = mpi->control(mpp_ctx, MPP_ENC_SET_RC_CFG, rc_cfg);
-    if (ret) {
-        mpp_err("setup rate control config failed ret %d\n", ret);
-        goto RET;
-    }
-
-    codec_cfg->coding = coding;
-    switch (coding) {
-    case MPP_VIDEO_CodingAVC : {
-        codec_cfg->h264.change = MPP_ENC_H264_CFG_STREAM_TYPE |
-                                 MPP_ENC_H264_CFG_CHANGE_PROFILE |
-                                 MPP_ENC_H264_CFG_CHANGE_ENTROPY |
-                                 MPP_ENC_H264_CFG_CHANGE_QP_LIMIT;
-        codec_cfg->h264.stream_type = 1;
-        codec_cfg->h264.profile  = profile;
-        codec_cfg->h264.level    = level;
-        codec_cfg->h264.entropy_coding_mode  = cabac_en;
-        codec_cfg->h264.cabac_init_idc  = 0;
-
-        if (rc_mode == 0) {
-            /* constant QP mode qp is fixed */
-            codec_cfg->h264.qp_init     = qp;
-            codec_cfg->h264.qp_max      = qp;
-            codec_cfg->h264.qp_min      = qp;
-            codec_cfg->h264.qp_max_step = 0;
-        } else {
-            /* constant bitrate do not limit qp range */
-            codec_cfg->h264.qp_init     = 0;
-            codec_cfg->h264.qp_max      = 51;
-            codec_cfg->h264.qp_min      = 10;
-            codec_cfg->h264.qp_max_step = 4;
-        }
-    } break;
-    case MPP_VIDEO_CodingMJPEG : {
-        codec_cfg->jpeg.change = MPP_ENC_JPEG_CFG_CHANGE_QP;
-        codec_cfg->jpeg.quant = qp;
-    } break;
-    case MPP_VIDEO_CodingHEVC : {
-        codec_cfg->h265.change = MPP_ENC_H265_CFG_INTRA_QP_CHANGE;
-        codec_cfg->h265.intra_qp = qp;
-    } break;
-    case MPP_VIDEO_CodingVP8 :
-    default : {
-        mpp_err_f("support encoder coding type %d\n", coding);
-    } break;
-    }
-    ret = mpi->control(mpp_ctx, MPP_ENC_SET_CODEC_CFG, codec_cfg);
-    if (ret)
-        mpp_err("setup codec config failed ret %d\n", ret);
-#endif
 RET:
     return ret;
 }
@@ -342,10 +273,6 @@ VpuApiLegacy::VpuApiLegacy() :
     fd_output(-1),
     mEosSet(0),
     enc_cfg(NULL),
-    ltr_frames(0),
-    hdr_on_idr(0),
-    add_prefix(0),
-    slice_mbs(0),
     updated(0),
     max_tid(0),
     mark_ltr(0),
@@ -1338,6 +1265,32 @@ PUT_FRAME:
     vpu_api_dbg_input("w %d h %d input fd %d size %d pts %lld, flag %d \n",
                       width, height, fd, size, aEncInStrm->timeUs, aEncInStrm->nFlags);
 
+    if (updated) {
+        MppMeta meta = mpp_frame_get_meta(frame);
+
+        if (updated & VPU_API_ENC_MARK_LTR_UPDATED)
+            mpp_meta_set_s32(meta, KEY_ENC_MARK_LTR, mark_ltr);
+
+        if (updated & VPU_API_ENC_USE_LTR_UPDATED)
+            mpp_meta_set_s32(meta, KEY_ENC_USE_LTR, use_ltr);
+
+        if (updated & VPU_API_ENC_FRAME_QP_UPDATED)
+            mpp_meta_set_s32(meta, KEY_ENC_FRAME_QP, frame_qp);
+
+        if (updated & VPU_API_ENC_BASE_PID_UPDATED)
+            mpp_meta_set_s32(meta, KEY_ENC_BASE_LAYER_PID, base_layer_pid);
+
+        if (updated & VPU_API_ENC_MAX_TID_UPDATED) {
+            mpp_enc_cfg_set_s32(enc_cfg, "h264:max_tid", max_tid);
+
+            ret = mpi->control(mpp_ctx, MPP_ENC_SET_CFG, enc_cfg);
+            if (ret)
+                mpp_err("setup enc config failed ret %d\n", ret);
+        }
+
+        updated = 0;
+    }
+
     ret = mpi->encode_put_frame(mpp_ctx, frame);
     if (ret)
         mpp_err_f("encode_put_frame ret %d\n", ret);
@@ -1509,6 +1462,31 @@ RK_S32 VpuApiLegacy::control(VpuCodecContext *ctx, VPU_API_CMD cmd, void *param)
     } break;
     case VPU_API_ENC_SET_VEPU22_ROI: {
         mpicmd = MPP_ENC_SET_ROI_CFG;
+    } break;
+    case VPU_API_ENC_SET_MAX_TID: {
+        max_tid = *(RK_S32 *)param;
+        updated |= VPU_API_ENC_MAX_TID_UPDATED;
+        return 0;
+    } break;
+    case VPU_API_ENC_SET_MARK_LTR: {
+        mark_ltr = *(RK_S32 *)param;
+        updated |= VPU_API_ENC_MARK_LTR_UPDATED;
+        return 0;
+    } break;
+    case VPU_API_ENC_SET_USE_LTR: {
+        use_ltr = *(RK_S32 *)param;
+        updated |= VPU_API_ENC_USE_LTR_UPDATED;
+        return 0;
+    } break;
+    case VPU_API_ENC_SET_FRAME_QP: {
+        frame_qp = *(RK_S32 *)param;
+        updated |= VPU_API_ENC_FRAME_QP_UPDATED;
+        return 0;
+    } break;
+    case VPU_API_ENC_SET_BASE_LAYER_PID: {
+        base_layer_pid = *(RK_S32 *)param;
+        updated |= VPU_API_ENC_BASE_PID_UPDATED;
+        return 0;
     } break;
     default: {
     } break;

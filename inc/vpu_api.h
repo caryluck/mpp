@@ -265,8 +265,13 @@ typedef enum VPU_API_ERR {
 typedef enum VPU_FRAME_ERR {
     VPU_FRAME_ERR_UNKNOW           = 0x0001,
     VPU_FRAME_ERR_UNSUPPORT        = 0x0002,
-
 } VPU_FRAME_ERR;
+
+#define EXTRA_CHANGE_MAX_TID        (0x00000001)
+#define EXTRA_CHANGE_LTR_FRMS       (0x00000002)
+#define EXTRA_CHANGE_HDR_ON_IDR     (0x00000004)
+#define EXTRA_CHANGE_ADD_PREFIX     (0x00000008)
+#define EXTRA_CHANGE_SLICE_MBS      (0x00000010)
 
 typedef struct EncParameter {
     RK_S16 width;
