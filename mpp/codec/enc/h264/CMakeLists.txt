@@ -21,6 +21,7 @@ set(H264E_SRC
     h264e_sei.c
     h264e_dpb.c
     h264e_slice.c
+    h264e_mlvec.c
     )
 
 

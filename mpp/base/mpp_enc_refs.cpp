@@ -705,7 +705,8 @@ MPP_RET mpp_enc_refs_get_cpb(MppEncRefs refs, EncCpbStatus *status)
     }
 
     /* step 4. process force flags and force ref_mode */
-    if (usr_cfg->force_flag & ENC_FORCE_LT_REF_IDX) {
+    if ((usr_cfg->force_flag & ENC_FORCE_LT_REF_IDX) ||
+        (usr_cfg->force_tid0_lt && frm->temporal_id == 0)) {
         frm->is_non_ref = 0;
         frm->is_lt_ref = 1;
         frm->lt_idx = usr_cfg->force_lt_idx;

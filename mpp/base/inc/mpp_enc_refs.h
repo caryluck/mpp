@@ -35,6 +35,7 @@
 #define ENC_FORCE_LT_REF_IDX    (0x00000002)
 #define ENC_FORCE_TEMPORAL_ID   (0x00000004)
 #define ENC_FORCE_REF_MODE      (0x00000008)
+#define ENC_FORCE_LTR_AT_TID0   (0x00000010)
 
 typedef struct MppEncRefFrmForceCfg_t {
     RK_U32              force_flag;
@@ -43,6 +44,7 @@ typedef struct MppEncRefFrmForceCfg_t {
     RK_S32              force_temporal_id;
     MppEncRefMode       force_ref_mode;
     RK_S32              force_ref_arg;
+    RK_S32              force_tid0_lt;
 } MppEncRefFrmUsrCfg;
 
 typedef void* MppEncRefs;

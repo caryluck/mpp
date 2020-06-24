@@ -414,11 +414,13 @@ static void mpp_enc_proc_cfg(MppEncImpl *enc)
          * So encoder always write its header to external buffer
          * which is provided by user.
          */
+        mpp_log_f("MPP_ENC_GET_EXTRA_INFO\n");
         if (!enc->hdr_status.ready) {
             enc_impl_gen_hdr(enc->impl, enc->hdr_pkt);
             enc->hdr_len = mpp_packet_get_length(enc->hdr_pkt);
             enc->hdr_status.ready = 1;
         }
+        mpp_log_f("enc->hdr_status.ready %d\n", enc->hdr_status.ready);
 
         if (enc->cmd == MPP_ENC_GET_EXTRA_INFO) {
             mpp_err("Please use MPP_ENC_GET_HDR_SYNC instead of unsafe MPP_ENC_GET_EXTRA_INFO\n");
@@ -536,6 +538,7 @@ static void mpp_enc_proc_cfg(MppEncImpl *enc)
     }
 
     if (check_resend_hdr(enc->cmd, enc->param, &enc->cfg)) {
+        mpp_log_f("check_resend_hdr\n");
         enc->frm_cfg.force_flag |= ENC_FORCE_IDR;
         enc->hdr_status.val = 0;
     }
@@ -704,7 +707,6 @@ void *mpp_enc_thread(void *data)
     MPP_RET ret = MPP_OK;
     MppFrame frame = NULL;
     MppPacket packet = NULL;
-    MppMeta frm_meta = NULL;
     MppMeta pkt_meta = NULL;
 
     memset(&task, 0, sizeof(task));
@@ -852,6 +854,7 @@ void *mpp_enc_thread(void *data)
         reset_hal_enc_task(hal_task);
         reset_enc_rc_task(rc_task);
         hal_task->rc_task = rc_task;
+        hal_task->frm_cfg = frm_cfg;
         frm->seq_idx = task.seq_idx++;
         rc_task->frame = frame;
 
@@ -903,6 +906,7 @@ void *mpp_enc_thread(void *data)
         hal_task->valid = 1;
 
         // 12. generate header before hardware stream
+        mpp_log_f("enc->hdr_status.ready %d\n", enc->hdr_status.ready);
         if (!enc->hdr_status.ready) {
             /* config cpb before generating header */
             enc_impl_gen_hdr(impl, enc->hdr_pkt);
@@ -928,37 +932,10 @@ void *mpp_enc_thread(void *data)
         hal_task->length = mpp_packet_get_length(packet);
         mpp_task_meta_get_buffer(task_in, KEY_MOTION_INFO, &hal_task->mv_info);
 
-        /* 14. check frm_meta data force key in input frame */
-        frm_meta = mpp_frame_get_meta(frame);
-        {
-            RK_S32 force_lt_idx = -1;
-            RK_S32 force_use_lt_idx = -1;
-            RK_S32 force_frame_qp = -1;
-
-            mpp_meta_get_s32(frm_meta, KEY_ENC_MARK_LTR, &force_lt_idx);
-            mpp_meta_get_s32(frm_meta, KEY_ENC_USE_LTR, &force_use_lt_idx);
-            mpp_meta_get_s32(frm_meta, KEY_ENC_FRAME_QP, &force_frame_qp);
-
-            if (force_lt_idx >= 0) {
-                frm_cfg->force_flag |= ENC_FORCE_LT_REF_IDX;
-                frm_cfg->force_lt_idx = force_lt_idx;
-            }
-
-            if (force_use_lt_idx >= 0) {
-                frm_cfg->force_flag |= ENC_FORCE_REF_MODE;
-                frm_cfg->force_ref_mode = REF_TO_LT_REF_IDX;
-                frm_cfg->force_ref_arg = force_use_lt_idx;
-            }
-
-            if (force_frame_qp >= 0) {
-                rc_force->force_flag |= ENC_RC_FORCE_QP;
-                rc_force->force_qp = force_frame_qp;
-            } else {
-                rc_force->force_flag &= ~ENC_RC_FORCE_QP;
-                rc_force->force_qp = -1;
-            }
-        }
-
+        /* 14. check frm_meta data force key in input frame and start one frame */
+        enc_dbg_detail("task %d enc start\n", frm->seq_idx);
+        task.status.enc_backup = 1;
+        RUN_ENC_IMPL_FUNC(enc_impl_start, impl, hal_task, mpp, ret);
 
         // 14. setup user_cfg to dpb
         if (frm_cfg->force_flag) {
@@ -967,9 +944,6 @@ void *mpp_enc_thread(void *data)
         }
 
         // 15. backup dpb
-        enc_dbg_detail("task %d enc start\n", frm->seq_idx);
-        task.status.enc_backup = 1;
-        RUN_ENC_IMPL_FUNC(enc_impl_start, impl, hal_task, mpp, ret);
         mpp_enc_refs_stash(enc->refs);
 
     TASK_REENCODE:
@@ -1024,7 +998,7 @@ void *mpp_enc_thread(void *data)
         }
 
         /* 17. Add all prefix info before encoding */
-        if (frm->is_idr) {
+        if (0 && frm->is_idr) {
             RK_S32 length = 0;
 
             enc_impl_add_prefix(impl, packet, &length, uuid_version,
@@ -1043,6 +1017,7 @@ void *mpp_enc_thread(void *data)
 
         {
             MppEncUserData *user_data = NULL;
+            MppMeta frm_meta = mpp_frame_get_meta(frame);
 
             mpp_meta_get_ptr(frm_meta, KEY_USER_DATA, (void**)&user_data);
 

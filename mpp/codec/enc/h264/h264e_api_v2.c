@@ -38,6 +38,7 @@
 
 #include "enc_impl_api.h"
 #include "mpp_enc_cfg_impl.h"
+#include "h264e_mlvec.h"
 
 RK_U32 h264e_debug = 0;
 
@@ -82,6 +83,9 @@ typedef struct {
     /* output to hal */
     RK_S32              syn_num;
     H264eSyntaxDesc     syntax[H264E_SYN_BUTT];
+
+    /* extension config */
+    H264eMlvecCtx       mlvec;
 } H264eCtx;
 
 static void init_h264e_cfg_set(MppEncCfgSet *cfg)
@@ -177,6 +181,8 @@ static MPP_RET h264e_init(void *ctx, EncImplCfg *ctrl_cfg)
 
     init_h264e_cfg_set(p->cfg);
 
+    mlvec_init(&p->mlvec);
+
     mpp_env_get_u32("h264e_debug", &h264e_debug, 0);
 
     h264e_dbg_func("leave\n");
@@ -193,6 +199,8 @@ static MPP_RET h264e_deinit(void *ctx)
         mpp_packet_deinit(&p->hdr_pkt);
 
     MPP_FREE(p->hdr_buf);
+
+    mlvec_deinit(p->mlvec);
 
     h264e_dbg_func("leave\n");
     return MPP_OK;
@@ -341,7 +349,7 @@ static MPP_RET h264e_proc_rc_cfg(MppEncRcCfg *dst, MppEncRcCfg *src)
     return ret;
 }
 
-static MPP_RET h264e_proc_h264_cfg(MppEncH264Cfg *dst, MppEncH264Cfg *src)
+static MPP_RET h264e_proc_h264_cfg(H264eCtx *p, MppEncH264Cfg *dst, MppEncH264Cfg *src)
 {
     MPP_RET ret = MPP_OK;
     RK_U32 change = src->change;
@@ -386,14 +394,46 @@ static MPP_RET h264e_proc_h264_cfg(MppEncH264Cfg *dst, MppEncH264Cfg *src)
         dst->intra_refresh_mode = src->intra_refresh_mode;
         dst->intra_refresh_arg = src->intra_refresh_arg;
     }
-    if (change & MPP_ENC_H264_CFG_CHANGE_MAX_LTR)
-        dst->max_ltr_frames = src->max_ltr_frames;
-    if (change & MPP_ENC_H264_CFG_CHANGE_MAX_TID)
-        dst->max_tid = src->max_tid;
-    if (change & MPP_ENC_H264_CFG_CHANGE_ADD_PREFIX)
-        dst->add_prefix = src->add_prefix;
-    if (change & MPP_ENC_H264_CFG_CHANGE_BASE_LAYER_PID)
-        dst->base_layer_pid = src->base_layer_pid;
+
+    {
+        H264eMlvecStaticCfg static_cfg;
+        H264eMlvecDynamicCfg dynamic_cfg;
+
+        if (change & MPP_ENC_H264_CFG_CHANGE_MAX_LTR) {
+            dst->max_ltr_frames = src->max_ltr_frames;
+
+            static_cfg.ltr_frames = src->max_ltr_frames;
+            static_cfg.change |= MLVEC_CHANGE_LTR_FRAMES;
+        }
+
+        if (change & MPP_ENC_H264_CFG_CHANGE_MAX_TID) {
+            dst->max_tid = src->max_tid;
+
+            static_cfg.max_temporal_layer_count = src->max_tid + 1;
+            static_cfg.change |= MLVEC_CHANGE_MAX_TEMPORAL_LAYER_COUNT;
+        }
+
+        if (change & MPP_ENC_H264_CFG_CHANGE_ADD_PREFIX) {
+            dst->add_prefix = src->add_prefix;
+
+            static_cfg.add_prefix = src->add_prefix;
+            static_cfg.change |= MLVEC_CHANGE_ADD_PREFIX_NAL;
+        }
+
+        if (change & MPP_ENC_H264_CFG_CHANGE_BASE_LAYER_PID) {
+            dst->base_layer_pid = src->base_layer_pid;
+
+            dynamic_cfg.base_layer_pid = src->base_layer_pid;
+            dynamic_cfg.change |= MLVEC_CHANGE_BASE_LAYER_PID;
+        }
+
+        if (static_cfg.change)
+            mlvec_set_static_config(p->mlvec, &static_cfg);
+
+        if (dynamic_cfg.change)
+            mlvec_set_dynamic_config(p->mlvec, &dynamic_cfg);
+    }
+
     if (change & MPP_ENC_H264_CFG_CHANGE_VUI)
         dst->vui = src->vui;
 
@@ -441,7 +481,7 @@ static MPP_RET h264e_proc_cfg(void *ctx, MpiCmd cmd, void *param)
             src->rc.change = 0;
         }
         if (src->codec.h264.change) {
-            ret |= h264e_proc_h264_cfg(&cfg->codec.h264, &src->codec.h264);
+            ret |= h264e_proc_h264_cfg(p, &cfg->codec.h264, &src->codec.h264);
             src->codec.h264.change = 0;
         }
         if (src->split.change) {
@@ -457,7 +497,7 @@ static MPP_RET h264e_proc_cfg(void *ctx, MpiCmd cmd, void *param)
     } break;
     case MPP_ENC_SET_CODEC_CFG : {
         MppEncCodecCfg *codec = (MppEncCodecCfg *)param;
-        ret = h264e_proc_h264_cfg(&cfg->codec.h264, &codec->h264);
+        ret = h264e_proc_h264_cfg(p, &cfg->codec.h264, &codec->h264);
     } break;
     case MPP_ENC_SET_SEI_CFG : {
     } break;
@@ -507,12 +547,36 @@ static MPP_RET h264e_gen_hdr(void *ctx, MppPacket pkt)
 static MPP_RET h264e_start(void *ctx, HalEncTask *task)
 {
     H264eCtx *p = (H264eCtx *)ctx;
+    MppEncRefFrmUsrCfg *frm_cfg = task->frm_cfg;
+    MppMeta meta = mpp_frame_get_meta(task->frame);
+    H264eMlvecDynamicCfg dynamic_cfg;
+    RK_S32 force_lt_idx = -1;
+    RK_S32 force_use_lt_idx = -1;
+    RK_S32 force_frame_qp = -1;
 
     h264e_dbg_func("enter\n");
 
+    mpp_meta_get_s32(meta, KEY_ENC_MARK_LTR, &force_lt_idx);
+    mpp_meta_get_s32(meta, KEY_ENC_USE_LTR, &force_use_lt_idx);
+    mpp_meta_get_s32(meta, KEY_ENC_FRAME_QP, &force_frame_qp);
+
+    memset(&dynamic_cfg, 0, sizeof(dynamic_cfg));
+
+    if (force_lt_idx >= 0) {
+        dynamic_cfg.change |= MLVEC_CHANGE_MARK_LTR;
+        dynamic_cfg.mark_ltr = force_lt_idx;
+    }
+
+    if (force_use_lt_idx >= 0) {
+        dynamic_cfg.change |= MLVEC_CHANGE_USE_LTR;
+        dynamic_cfg.use_ltr = force_use_lt_idx;
+    }
+    if (dynamic_cfg.change)
+        mlvec_set_dynamic_config(p->mlvec, &dynamic_cfg);
+
+    mlvec_frame_start(p->mlvec, frm_cfg);
+
     h264e_dbg_func("leave\n");
-    (void) task;
-    (void) p;
 
     return MPP_OK;
 }

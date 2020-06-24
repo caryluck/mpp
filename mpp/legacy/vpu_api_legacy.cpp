@@ -158,8 +158,17 @@ static MPP_RET vpu_api_set_enc_cfg(MppCtx mpp_ctx, MppApi *mpi, MppEncCfg enc_cf
     }
 
     /* setup extra mode flag */
+    mpp_log_f("extra_mode %x\n", cfg->extra_mode);
     if (cfg->extra_mode) {
-        RK_U32 extra_mode   = cfg->extra_mode;
+        RK_U32 extra_mode = cfg->extra_mode;
+        MppEncRefLtFrmCfg lt_ref[4];
+        MppEncRefStFrmCfg st_ref[16];
+        RK_S32 lt_cfg_cnt = 0;
+        RK_S32 st_cfg_cnt = 0;
+        RK_S32 tid0_loop = 0;
+
+        memset(lt_ref, 0, sizeof(lt_ref));
+        memset(st_ref, 0, sizeof(st_ref));
 
         if (extra_mode & EXTRA_CHANGE_HDR_ON_IDR) {
             MppEncHeaderMode mode = cfg->hdr_on_idr ?
@@ -171,18 +180,241 @@ static MPP_RET vpu_api_set_enc_cfg(MppCtx mpp_ctx, MppApi *mpi, MppEncCfg enc_cf
                 mpp_err("setup enc header mode %d failed ret %d\n", mode, ret);
         }
 
-        if (extra_mode & EXTRA_CHANGE_MAX_TID)
+        mpp_log_f("cfg->max_tid %d\n", cfg->max_tid);
+
+        if (extra_mode & EXTRA_CHANGE_MAX_TID) {
             mpp_enc_cfg_set_s32(enc_cfg, "h264:max_tid", cfg->max_tid);
 
-        if (extra_mode & EXTRA_CHANGE_LTR_FRMS)
+            switch (cfg->max_tid) {
+            case 0 : {
+            } break;
+            case 1 : {
+                /* set tsvc2 st-ref struct */
+                /* st 0 layer 0 - ref */
+                st_ref[0].is_non_ref    = 0;
+                st_ref[0].temporal_id   = 0;
+                st_ref[0].ref_mode      = REF_TO_TEMPORAL_LAYER;
+                st_ref[0].ref_arg       = 0;
+                st_ref[0].repeat        = 0;
+                /* st 1 layer 1 - non-ref */
+                st_ref[1].is_non_ref    = 0;
+                st_ref[1].temporal_id   = 1;
+                st_ref[1].ref_mode      = REF_TO_TEMPORAL_LAYER;
+                st_ref[1].ref_arg       = 0;
+                st_ref[1].repeat        = 0;
+                /* st 2 layer 0 - ref */
+                st_ref[2].is_non_ref    = 0;
+                st_ref[2].temporal_id   = 0;
+                st_ref[2].ref_mode      = REF_TO_TEMPORAL_LAYER;
+                st_ref[2].ref_arg       = 0;
+                st_ref[2].repeat        = 0;
+
+                st_cfg_cnt = 3;
+                tid0_loop = 2;
+                mpp_log_f("tsvc2\n");
+            } break;
+            case 2 : {
+                /* set tsvc3 st-ref struct */
+                /* st 0 layer 0 - ref */
+                st_ref[0].is_non_ref    = 0;
+                st_ref[0].temporal_id   = 0;
+                st_ref[0].ref_mode      = REF_TO_TEMPORAL_LAYER;
+                st_ref[0].ref_arg       = 0;
+                st_ref[0].repeat        = 0;
+                /* st 1 layer 2 - non-ref */
+                st_ref[1].is_non_ref    = 0;
+                st_ref[1].temporal_id   = 2;
+                st_ref[1].ref_mode      = REF_TO_TEMPORAL_LAYER;
+                st_ref[1].ref_arg       = 0;
+                st_ref[1].repeat        = 0;
+                /* st 2 layer 1 - ref */
+                st_ref[2].is_non_ref    = 0;
+                st_ref[2].temporal_id   = 1;
+                st_ref[2].ref_mode      = REF_TO_TEMPORAL_LAYER;
+                st_ref[2].ref_arg       = 0;
+                st_ref[2].repeat        = 0;
+                /* st 3 layer 2 - non-ref */
+                st_ref[3].is_non_ref    = 0;
+                st_ref[3].temporal_id   = 2;
+                st_ref[3].ref_mode      = REF_TO_TEMPORAL_LAYER;
+                st_ref[3].ref_arg       = 1;
+                st_ref[3].repeat        = 0;
+                /* st 4 layer 0 - ref */
+                st_ref[4].is_non_ref    = 0;
+                st_ref[4].temporal_id   = 0;
+                st_ref[4].ref_mode      = REF_TO_TEMPORAL_LAYER;
+                st_ref[4].ref_arg       = 0;
+                st_ref[4].repeat        = 0;
+
+                st_cfg_cnt = 5;
+                tid0_loop = 4;
+                mpp_log_f("tsvc3\n");
+            } break;
+            case 3 : {
+                /* set tsvc3 st-ref struct */
+                /* st 0 layer 0 - ref */
+                st_ref[0].is_non_ref    = 0;
+                st_ref[0].temporal_id   = 0;
+                st_ref[0].ref_mode      = REF_TO_TEMPORAL_LAYER;
+                st_ref[0].ref_arg       = 0;
+                st_ref[0].repeat        = 0;
+                /* st 1 layer 3 - non-ref */
+                st_ref[1].is_non_ref    = 1;
+                st_ref[1].temporal_id   = 3;
+                st_ref[1].ref_mode      = REF_TO_PREV_REF_FRM;
+                st_ref[1].ref_arg       = 0;
+                st_ref[1].repeat        = 0;
+                /* st 2 layer 2 - ref */
+                st_ref[2].is_non_ref    = 0;
+                st_ref[2].temporal_id   = 2;
+                st_ref[2].ref_mode      = REF_TO_PREV_REF_FRM;
+                st_ref[2].ref_arg       = 0;
+                st_ref[2].repeat        = 0;
+                /* st 3 layer 3 - non-ref */
+                st_ref[3].is_non_ref    = 1;
+                st_ref[3].temporal_id   = 3;
+                st_ref[3].ref_mode      = REF_TO_PREV_REF_FRM;
+                st_ref[3].ref_arg       = 0;
+                st_ref[3].repeat        = 0;
+                /* st 4 layer 1 - ref */
+                st_ref[4].is_non_ref    = 0;
+                st_ref[4].temporal_id   = 1;
+                st_ref[4].ref_mode      = REF_TO_TEMPORAL_LAYER;
+                st_ref[4].ref_arg       = 0;
+                st_ref[4].repeat        = 0;
+                /* st 5 layer 3 - non-ref */
+                st_ref[5].is_non_ref    = 1;
+                st_ref[5].temporal_id   = 3;
+                st_ref[5].ref_mode      = REF_TO_PREV_REF_FRM;
+                st_ref[5].ref_arg       = 0;
+                st_ref[5].repeat        = 0;
+                /* st 6 layer 2 - ref */
+                st_ref[6].is_non_ref    = 0;
+                st_ref[6].temporal_id   = 2;
+                st_ref[6].ref_mode      = REF_TO_PREV_REF_FRM;
+                st_ref[6].ref_arg       = 0;
+                st_ref[6].repeat        = 0;
+                /* st 7 layer 3 - non-ref */
+                st_ref[7].is_non_ref    = 1;
+                st_ref[7].temporal_id   = 3;
+                st_ref[7].ref_mode      = REF_TO_PREV_REF_FRM;
+                st_ref[7].ref_arg       = 0;
+                st_ref[7].repeat        = 0;
+                /* st 8 layer 0 - ref */
+                st_ref[8].is_non_ref    = 0;
+                st_ref[8].temporal_id   = 0;
+                st_ref[8].ref_mode      = REF_TO_PREV_REF_FRM;
+                st_ref[8].ref_arg       = 0;
+                st_ref[8].repeat        = 0;
+
+                st_cfg_cnt = 9;
+                tid0_loop = 8;
+                mpp_log_f("tsvc4\n");
+            } break;
+            default : {
+                mpp_err("invalid max temporal layer id %d\n", cfg->max_tid);
+            } break;
+            }
+        }
+
+        mpp_log_f("cfg->ltr_frames %d\n", cfg->ltr_frames);
+
+        if (extra_mode & EXTRA_CHANGE_LTR_FRMS) {
             mpp_enc_cfg_set_s32(enc_cfg, "h264:max_ltr", cfg->ltr_frames);
+
+            switch (cfg->ltr_frames) {
+            case 0 : {
+            } break;
+            case 1 : {
+                lt_ref[0].lt_idx        = 0;
+                lt_ref[0].temporal_id   = 0;
+                lt_ref[0].ref_mode      = REF_TO_PREV_LT_REF;
+                lt_ref[0].lt_gap        = tid0_loop - 1;
+                lt_ref[0].lt_delay      = 0;
+
+                lt_cfg_cnt = 1;
+            } break;
+            case 2 : {
+                lt_ref[0].lt_idx        = 0;
+                lt_ref[0].temporal_id   = 0;
+                lt_ref[0].ref_mode      = REF_TO_PREV_LT_REF;
+                lt_ref[0].lt_gap        = tid0_loop * 2 - 1;
+                lt_ref[0].lt_delay      = 0;
+
+                lt_ref[1].lt_idx        = 1;
+                lt_ref[1].temporal_id   = 0;
+                lt_ref[1].ref_mode      = REF_TO_PREV_LT_REF;
+                lt_ref[1].lt_gap        = tid0_loop * 2 - 1;
+                lt_ref[1].lt_delay      = tid0_loop;
+
+                lt_cfg_cnt = 2;
+            } break;
+            case 3 : {
+                lt_ref[0].lt_idx        = 0;
+                lt_ref[0].temporal_id   = 0;
+                lt_ref[0].ref_mode      = REF_TO_PREV_LT_REF;
+                lt_ref[0].lt_gap        = tid0_loop * 3 - 1;
+                lt_ref[0].lt_delay      = 0;
+
+                lt_ref[1].lt_idx        = 1;
+                lt_ref[1].temporal_id   = 0;
+                lt_ref[1].ref_mode      = REF_TO_PREV_LT_REF;
+                lt_ref[1].lt_gap        = tid0_loop * 3 - 1;
+                lt_ref[1].lt_delay      = tid0_loop;
+
+                lt_ref[2].lt_idx        = 2;
+                lt_ref[2].temporal_id   = 0;
+                lt_ref[2].ref_mode      = REF_TO_PREV_LT_REF;
+                lt_ref[2].lt_gap        = tid0_loop * 3 - 1;
+                lt_ref[2].lt_delay      = tid0_loop * 2;
+
+                lt_cfg_cnt = 3;
+            } break;
+            default : {
+                mpp_err("invalid max LTR frame count %d\n", cfg->ltr_frames);
+            } break;
+            }
+        }
+
+        if (lt_cfg_cnt)
+            mpp_assert(st_cfg_cnt);
+
+        mpp_log_f("lt_cfg_cnt %d st_cfg_cnt %d\n", lt_cfg_cnt, st_cfg_cnt);
+        if (lt_cfg_cnt || st_cfg_cnt) {
+            MppEncRefCfg ref = NULL;
+
+            mpp_enc_ref_cfg_init(&ref);
+
+            ret = mpp_enc_ref_cfg_set_cfg_cnt(ref, lt_cfg_cnt, st_cfg_cnt);
+            ret = mpp_enc_ref_cfg_add_lt_cfg(ref, lt_cfg_cnt, lt_ref);
+            ret = mpp_enc_ref_cfg_add_st_cfg(ref, st_cfg_cnt, st_ref);
+            ret = mpp_enc_ref_cfg_check(ref);
+
+            ret = mpi->control(mpp_ctx, MPP_ENC_SET_REF_CFG, ref);
+            if (ret)
+                mpp_err("mpi control enc set ref cfg failed ret %d\n", ret);
+
+            mpp_enc_ref_cfg_deinit(&ref);
+        } else {
+            ret = mpi->control(mpp_ctx, MPP_ENC_SET_REF_CFG, NULL);
+            if (ret)
+                mpp_err("mpi control enc set ref cfg failed ret %d\n", ret);
+        }
+
+        mpp_log_f("cfg->add_prefix %d\n", cfg->add_prefix);
 
         if (extra_mode & EXTRA_CHANGE_ADD_PREFIX)
             mpp_enc_cfg_set_s32(enc_cfg, "h264:add_prefix", cfg->add_prefix);
 
+        mpp_log_f("cfg->slice_mbs %d -> 0\n", cfg->slice_mbs);
+        cfg->slice_mbs = 0;
+
         if (extra_mode & EXTRA_CHANGE_SLICE_MBS) {
-            mpp_enc_cfg_set_u32(enc_cfg, "split:mode", MPP_ENC_SPLIT_BY_CTU);
-            mpp_enc_cfg_set_u32(enc_cfg, "split:arg", cfg->slice_mbs);
+            if (cfg->slice_mbs) {
+                mpp_enc_cfg_set_u32(enc_cfg, "split:mode", MPP_ENC_SPLIT_BY_CTU);
+                mpp_enc_cfg_set_u32(enc_cfg, "split:arg", cfg->slice_mbs);
+            } else
+                mpp_enc_cfg_set_u32(enc_cfg, "split:mode", MPP_ENC_SPLIT_NONE);
         }
     }
 
@@ -359,7 +591,6 @@ RK_S32 VpuApiLegacy::init(VpuCodecContext *ctx, RK_U8 *extraData, RK_U32 extra_s
 
     MPP_RET ret = MPP_OK;
     MppCtxType type;
-    MppPacket pkt = NULL;
 
     if (mpp_ctx == NULL || mpi == NULL) {
         mpp_err("found invalid context input");
@@ -412,13 +643,16 @@ RK_S32 VpuApiLegacy::init(VpuCodecContext *ctx, RK_U8 *extraData, RK_U32 extra_s
         memcpy(&enc_param, param, sizeof(enc_param));
         vpu_api_set_enc_cfg(mpp_ctx, mpi, enc_cfg, coding, format, param);
 
-        ret = mpi->control(mpp_ctx, MPP_ENC_GET_EXTRA_INFO, &pkt);
+        if (ctx->extradata) {
+            MppPacket pkt = NULL;
 
-        if (pkt) {
-            ctx->extradata_size = (RK_S32)mpp_packet_get_length(pkt);
-            ctx->extradata      = mpp_packet_get_data(pkt);
+            ret = mpi->control(mpp_ctx, MPP_ENC_GET_EXTRA_INFO, &pkt);
+            if (pkt) {
+                ctx->extradata_size = (RK_S32)mpp_packet_get_length(pkt);
+                ctx->extradata      = mpp_packet_get_data(pkt);
+            }
+            pkt = NULL;
         }
-        pkt = NULL;
     } else { /* MPP_CTX_DEC */
         vpug.CodecType  = ctx->codecType;
         vpug.ImgWidth   = ctx->width;
@@ -427,6 +661,8 @@ RK_S32 VpuApiLegacy::init(VpuCodecContext *ctx, RK_U8 *extraData, RK_U32 extra_s
         init_frame_info(ctx, mpp_ctx, mpi, &vpug);
 
         if (extraData != NULL) {
+            MppPacket pkt = NULL;
+
             mpp_packet_init(&pkt, extraData, extra_size);
             mpp_packet_set_extra_data(pkt);
             mpi->decode_put_packet(mpp_ctx, pkt);
@@ -1393,6 +1629,9 @@ RK_S32 VpuApiLegacy::control(VpuCodecContext *ctx, VPU_API_CMD cmd, void *param)
         MppCodingType coding = (MppCodingType)ctx->videoCoding;
 
         memcpy(&enc_param, param, sizeof(enc_param));
+        mpp_log_f("VPU_API_ENC_SETCFG\n");
+        mpp_log_f("extra_mode %x\n", enc_param.extra_mode);
+        mpp_log_f("max_tid %d\n", enc_param.max_tid);
         return vpu_api_set_enc_cfg(mpp_ctx, mpi, enc_cfg, coding, format, &enc_param);
     } break;
     case VPU_API_ENC_GETCFG : {
@@ -1464,28 +1703,48 @@ RK_S32 VpuApiLegacy::control(VpuCodecContext *ctx, VPU_API_CMD cmd, void *param)
         mpicmd = MPP_ENC_SET_ROI_CFG;
     } break;
     case VPU_API_ENC_SET_MAX_TID: {
+        mpp_log_f("VPU_API_ENC_SET_MAX_TID\n");
         max_tid = *(RK_S32 *)param;
         updated |= VPU_API_ENC_MAX_TID_UPDATED;
         return 0;
     } break;
     case VPU_API_ENC_SET_MARK_LTR: {
+        mpp_log_f("VPU_API_ENC_SET_MARK_LTR\n");
         mark_ltr = *(RK_S32 *)param;
         updated |= VPU_API_ENC_MARK_LTR_UPDATED;
         return 0;
     } break;
     case VPU_API_ENC_SET_USE_LTR: {
+        mpp_log_f("VPU_API_ENC_SET_USE_LTR\n");
         use_ltr = *(RK_S32 *)param;
         updated |= VPU_API_ENC_USE_LTR_UPDATED;
         return 0;
     } break;
     case VPU_API_ENC_SET_FRAME_QP: {
+        mpp_log_f("VPU_API_ENC_SET_FRAME_QP\n");
         frame_qp = *(RK_S32 *)param;
         updated |= VPU_API_ENC_FRAME_QP_UPDATED;
         return 0;
     } break;
     case VPU_API_ENC_SET_BASE_LAYER_PID: {
+        mpp_log_f("VPU_API_ENC_SET_BASE_LAYER_PID\n");
         base_layer_pid = *(RK_S32 *)param;
         updated |= VPU_API_ENC_BASE_PID_UPDATED;
+        return 0;
+    } break;
+    case VPU_API_GET_EXTRA_INFO: {
+        mpp_log_f("VPU_API_GET_EXTRA_INFO\n");
+        EncoderOut_t *out = (EncoderOut_t *)param;
+        MppPacket pkt = NULL;
+
+        mpi->control(mpp_ctx, MPP_ENC_GET_EXTRA_INFO, &pkt);
+        if (pkt) {
+            RK_S32 length = mpp_packet_get_length(pkt);
+            void *src = mpp_packet_get_data(pkt);
+
+            memcpy(out->data, src, length);
+            out->size = length;
+        }
         return 0;
     } break;
     default: {
