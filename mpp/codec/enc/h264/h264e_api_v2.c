@@ -553,12 +553,14 @@ static MPP_RET h264e_start(void *ctx, HalEncTask *task)
     RK_S32 force_lt_idx = -1;
     RK_S32 force_use_lt_idx = -1;
     RK_S32 force_frame_qp = -1;
+    RK_S32 base_layer_pid = -1;
 
     h264e_dbg_func("enter\n");
 
     mpp_meta_get_s32(meta, KEY_ENC_MARK_LTR, &force_lt_idx);
     mpp_meta_get_s32(meta, KEY_ENC_USE_LTR, &force_use_lt_idx);
     mpp_meta_get_s32(meta, KEY_ENC_FRAME_QP, &force_frame_qp);
+    mpp_meta_get_s32(meta, KEY_ENC_BASE_LAYER_PID, &base_layer_pid);
 
     memset(&dynamic_cfg, 0, sizeof(dynamic_cfg));
 
@@ -573,6 +575,8 @@ static MPP_RET h264e_start(void *ctx, HalEncTask *task)
     }
     if (dynamic_cfg.change)
         mlvec_set_dynamic_config(p->mlvec, &dynamic_cfg);
+    if (base_layer_pid >= 0)
+        p->cfg->codec.h264.base_layer_pid = base_layer_pid;
 
     mlvec_frame_start(p->mlvec, frm_cfg);
 
