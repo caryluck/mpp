@@ -399,6 +399,9 @@ static MPP_RET h264e_proc_h264_cfg(H264eCtx *p, MppEncH264Cfg *dst, MppEncH264Cf
         H264eMlvecStaticCfg static_cfg;
         H264eMlvecDynamicCfg dynamic_cfg;
 
+        memset(&static_cfg, 0, sizeof(static_cfg));
+        memset(&dynamic_cfg, 0, sizeof(dynamic_cfg));
+
         if (change & MPP_ENC_H264_CFG_CHANGE_MAX_LTR) {
             dst->max_ltr_frames = src->max_ltr_frames;
 
