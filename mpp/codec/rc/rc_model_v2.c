@@ -806,8 +806,15 @@ MPP_RET rc_model_v2_hal_start(void *ctx, EncRcTask *task)
     RK_S32 quality_max = info->quality_max;
     RK_S32 quality_target = info->quality_target;
 
-    if (p->usr_cfg.mode == RC_FIXQP)
+    if (p->usr_cfg.mode == RC_FIXQP) {
+        if (force->force_flag & ENC_RC_FORCE_QP) {
+            RK_S32 qp = force->force_qp;
+            info->quality_target = qp;
+            info->quality_max = qp;
+            info->quality_min = qp;
+        }
         return MPP_OK;
+    }
 
     rc_dbg_func("enter p %p task %p\n", p, task);
 

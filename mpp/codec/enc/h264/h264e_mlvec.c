@@ -168,16 +168,24 @@ MPP_RET mlvec_frame_start(H264eMlvecCtx ctx, MppEncRefFrmUsrCfg *cfg)
     return MPP_OK;
 }
 
-MPP_RET mlvec_rc_start(H264eMlvecCtx ctx, EncFrmStatus *frm)
+MPP_RET mlvec_rc_setup(H264eMlvecCtx ctx, EncRcForceCfg *cfg)
 {
-    if (NULL == ctx || NULL == frm) {
-        mpp_err_f("invalid NULL input ctx %p frm %p\n", ctx, frm);
+    if (NULL == ctx || NULL == cfg) {
+        mpp_err_f("invalid NULL input ctx %p cfg %p\n", ctx, cfg);
         return MPP_ERR_NULL_PTR;
     }
 
     H264eMlvecCtxImpl *impl = (H264eMlvecCtxImpl *)ctx;
+    H264eMlvecDynamicCfg *cfg_dy = &impl->dynamic_cfg;
 
-    (void)impl;
+    mpp_log_f("change %x frame_qp %d\n", cfg_dy->change, cfg_dy->frame_qp);
+    if (cfg_dy->change & MLVEC_CHANGE_FRAME_QP) {
+        cfg->force_flag = ENC_RC_FORCE_QP;
+        cfg->force_qp = cfg_dy->frame_qp;
+    } else {
+        cfg->force_flag = 0;
+        cfg->force_qp = -1;
+    }
 
     return MPP_OK;
 }

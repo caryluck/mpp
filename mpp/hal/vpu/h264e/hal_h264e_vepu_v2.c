@@ -652,8 +652,8 @@ MPP_RET h264e_vepu_mbrc_prepare(HalH264eVepuMbRcCtx ctx, HalH264eVepuMbRc *mbrc,
         mbrc->cp_error[i] = tmp;
     }
 
-    mbrc->mad_qp_change = 2;
-    mbrc->mad_threshold = 2;
+    mbrc->mad_qp_change = 0;
+    mbrc->mad_threshold = 0;
     mbrc->cp_distance_mbs = p->check_point_distance;
 
     return MPP_OK;
@@ -687,7 +687,7 @@ MPP_RET h264e_vepu_slice_split_cfg(H264eSlice *slice, HalH264eVepuMbRc *mbrc,
         mpp_assert(split->split_arg > 0);
         RK_U32 mb_per_line = (cfg->prep.width + 15) / 16;
 
-        slice_mb_rows = split->split_arg / mb_per_line;
+        slice_mb_rows = (split->split_arg + mb_per_line - 1) / mb_per_line;
         mbrc->slice_size_mb_rows = mpp_clip(slice_mb_rows, 2, 127);
     } break;
     default : {
@@ -776,7 +776,7 @@ MPP_RET h264e_vepu_stream_amend_deinit(HalH264eVepuStreamAmend *ctx)
 
 MPP_RET h264e_vepu_stream_amend_config(HalH264eVepuStreamAmend *ctx,
                                        MppPacket packet, MppEncCfgSet *cfg,
-                                       H264eSlice *slice)
+                                       H264eSlice *slice, H264ePrefixNal *prefix)
 {
     MppEncRefCfgImpl *ref = (MppEncRefCfgImpl *)cfg->ref_cfg;
 
@@ -784,6 +784,7 @@ MPP_RET h264e_vepu_stream_amend_config(HalH264eVepuStreamAmend *ctx,
         ctx->enable = 1;
         ctx->slice_enabled = 0;
         ctx->slice = slice;
+        ctx->prefix = prefix;
 
         ctx->packet = packet;
         ctx->buf_base = mpp_packet_get_length(packet);
@@ -822,6 +823,8 @@ MPP_RET h264e_vepu_stream_amend_proc(HalH264eVepuStreamAmend *ctx)
     RK_U8 *dst_buf = NULL;
     RK_S32 buf_size;
     RK_S32 final_len = 0;
+    RK_S32 first_slice = 1;
+    RK_S32 last_slice = 0;
 
     {
         RK_S32 more_buf = 0;
@@ -855,9 +858,27 @@ MPP_RET h264e_vepu_stream_amend_proc(HalH264eVepuStreamAmend *ctx)
             p += nal_len;
 
             hal_h264e_dbg_amend("nal_len %d last byte %1x", nal_len, ctx->src_buf[nal_len - 1]);
+            last_slice = (len == 0);
         } else {
             memcpy(ctx->src_buf, p, len);
             nal_len = len;
+            last_slice = 1;
+        }
+
+        mpp_log_f("multi %d [%d %d] nal_len %d\n", slice->is_multi_slice,
+                  first_slice, last_slice, nal_len);
+
+        if (!first_slice && ctx->prefix) {
+            /* add prefix for each slice */
+            H264ePrefixNal *prefix = ctx->prefix;
+
+            RK_S32 prefix_bit = h264e_slice_write_prefix_nal_unit_svc(prefix, dst_buf, buf_size);
+
+            prefix_bit /= 8;
+
+            dst_buf += prefix_bit;
+            buf_size -= prefix_bit;
+            final_len += prefix_bit;
         }
 
         H264eSlice slice_rd;
@@ -903,8 +924,6 @@ MPP_RET h264e_vepu_stream_amend_proc(HalH264eVepuStreamAmend *ctx)
             RK_S32 bit_len = nal_len * 8 - tail_0bit + hdr_diff_bit;
             RK_S32 new_len = (bit_len + diff_size * 8 + 7) / 8;
 
-            dst_buf[new_len] = 0;
-
             hal_h264e_dbg_amend("frm %4d %c len %d bit hw %d sw %d byte hw %d sw %d diff %d -> %d\n",
                                 slice->frame_num, (slice->idr_flag ? 'I' : 'P'),
                                 nal_len, hw_len_bit, sw_len_bit,
@@ -919,9 +938,10 @@ MPP_RET h264e_vepu_stream_amend_proc(HalH264eVepuStreamAmend *ctx)
             final_len += new_len;
         }
 
-        if (!slice->is_multi_slice || !len) {
+        if (last_slice) {
             p = mpp_packet_get_pos(pkt);
-            memcpy(p + base, ctx->dst_buf, final_len);
+            p += base;
+            memcpy(p, ctx->dst_buf, final_len);
 
             if (slice->entropy_coding_mode) {
                 if (final_len < ctx->old_length)
@@ -934,6 +954,7 @@ MPP_RET h264e_vepu_stream_amend_proc(HalH264eVepuStreamAmend *ctx)
 
         dst_buf += nal_len;
         buf_size -= nal_len;
+        first_slice = 0;
     } while (1);
 
     ctx->new_length = final_len;

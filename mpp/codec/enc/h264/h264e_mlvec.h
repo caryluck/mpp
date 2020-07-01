@@ -58,7 +58,7 @@ MPP_RET mlvec_set_static_config(H264eMlvecCtx ctx, H264eMlvecStaticCfg *cfg);
 MPP_RET mlvec_set_dynamic_config(H264eMlvecCtx ctx, H264eMlvecDynamicCfg *cfg);
 
 MPP_RET mlvec_frame_start(H264eMlvecCtx ctx, MppEncRefFrmUsrCfg *frm);
-MPP_RET mlvec_rc_start(H264eMlvecCtx ctx, EncFrmStatus *frm);
+MPP_RET mlvec_rc_setup(H264eMlvecCtx ctx, EncRcForceCfg *cfg);
 
 MPP_RET mlvec_frame_end(H264eMlvecCtx ctx);
 

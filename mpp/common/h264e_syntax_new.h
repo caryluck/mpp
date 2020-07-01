@@ -28,7 +28,7 @@ typedef enum H264eSyntaxType_e {
     H264E_SYN_SLICE,
     H264E_SYN_FRAME,
     H264E_SYN_RC,
-    H264E_SYN_ROI,
+    H264E_SYN_PREFIX,
     H264E_SYN_RC_RET,
     H264E_SYN_BUTT,
 } H264eSyntaxType;
@@ -270,6 +270,7 @@ typedef struct H264eSlice_t {
     RK_U32      pic_parameter_set_id;
     RK_S32      frame_num;
     RK_S32      num_ref_idx_override;
+    RK_S32      pps_pic_init_qp;
     RK_S32      qp_delta;
     RK_U32      cabac_init_idc;
     RK_U32      disable_deblocking_filter_idc;

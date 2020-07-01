@@ -414,13 +414,11 @@ static void mpp_enc_proc_cfg(MppEncImpl *enc)
          * So encoder always write its header to external buffer
          * which is provided by user.
          */
-        mpp_log_f("MPP_ENC_GET_EXTRA_INFO\n");
         if (!enc->hdr_status.ready) {
             enc_impl_gen_hdr(enc->impl, enc->hdr_pkt);
             enc->hdr_len = mpp_packet_get_length(enc->hdr_pkt);
             enc->hdr_status.ready = 1;
         }
-        mpp_log_f("enc->hdr_status.ready %d\n", enc->hdr_status.ready);
 
         if (enc->cmd == MPP_ENC_GET_EXTRA_INFO) {
             mpp_err("Please use MPP_ENC_GET_HDR_SYNC instead of unsafe MPP_ENC_GET_EXTRA_INFO\n");
@@ -695,7 +693,6 @@ void *mpp_enc_thread(void *data)
     EncRcTask *rc_task = &enc->rc_task;
     EncCpbStatus *cpb = &rc_task->cpb;
     EncFrmStatus *frm = &rc_task->frm;
-    EncRcForceCfg *rc_force = &rc_task->force;
     MppEncRefFrmUsrCfg *frm_cfg = &enc->frm_cfg;
     EncTask task;
     HalTaskInfo *task_info = &task.info;
@@ -906,7 +903,6 @@ void *mpp_enc_thread(void *data)
         hal_task->valid = 1;
 
         // 12. generate header before hardware stream
-        mpp_log_f("enc->hdr_status.ready %d\n", enc->hdr_status.ready);
         if (!enc->hdr_status.ready) {
             /* config cpb before generating header */
             enc_impl_gen_hdr(impl, enc->hdr_pkt);

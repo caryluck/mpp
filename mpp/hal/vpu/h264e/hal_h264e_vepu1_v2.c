@@ -175,7 +175,7 @@ static RK_U32 update_vepu1_syntax(HalH264eVepu1Ctx *ctx, MppSyntax *syntax)
         case H264E_SYN_RC : {
             hal_h264e_dbg_detail("update rc");
         } break;
-        case H264E_SYN_ROI :
+        case H264E_SYN_PREFIX :
         default : {
             mpp_log_f("invalid syntax type %d\n", desc->type);
         } break;
@@ -226,7 +226,7 @@ static MPP_RET hal_h264e_vepu1_get_task_v2(void *hal, HalEncTask *task)
     hw_addr->refr[1] = hw_addr->refr[0] + (yuv_size << 10);
 
     h264e_vepu_stream_amend_config(&ctx->amend, task->packet, ctx->cfg,
-                                   ctx->slice);
+                                   ctx->slice, NULL);
 
     hal_h264e_dbg_func("leave %p\n", hal);
 

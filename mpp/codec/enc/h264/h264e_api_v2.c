@@ -556,30 +556,33 @@ static MPP_RET h264e_start(void *ctx, HalEncTask *task)
     RK_S32 force_lt_idx = -1;
     RK_S32 force_use_lt_idx = -1;
     RK_S32 force_frame_qp = -1;
-    RK_S32 base_layer_pid = -1;
 
     h264e_dbg_func("enter\n");
 
     mpp_meta_get_s32(meta, KEY_ENC_MARK_LTR, &force_lt_idx);
     mpp_meta_get_s32(meta, KEY_ENC_USE_LTR, &force_use_lt_idx);
     mpp_meta_get_s32(meta, KEY_ENC_FRAME_QP, &force_frame_qp);
-    mpp_meta_get_s32(meta, KEY_ENC_BASE_LAYER_PID, &base_layer_pid);
 
     memset(&dynamic_cfg, 0, sizeof(dynamic_cfg));
 
     if (force_lt_idx >= 0) {
         dynamic_cfg.change |= MLVEC_CHANGE_MARK_LTR;
         dynamic_cfg.mark_ltr = force_lt_idx;
+        mpp_log_f("mark_ltr %d\n", force_lt_idx);
     }
 
     if (force_use_lt_idx >= 0) {
         dynamic_cfg.change |= MLVEC_CHANGE_USE_LTR;
         dynamic_cfg.use_ltr = force_use_lt_idx;
     }
+    if (force_frame_qp >= 0) {
+        dynamic_cfg.change |= MLVEC_CHANGE_FRAME_QP;
+        dynamic_cfg.frame_qp = force_frame_qp;
+        mpp_log_f("force_frame_qp %d\n", force_frame_qp);
+    }
+
     if (dynamic_cfg.change)
         mlvec_set_dynamic_config(p->mlvec, &dynamic_cfg);
-    if (base_layer_pid >= 0)
-        p->cfg->codec.h264.base_layer_pid = base_layer_pid;
 
     mlvec_frame_start(p->mlvec, frm_cfg);
 
@@ -608,7 +611,7 @@ static MPP_RET h264e_proc_dpb(void *ctx, HalEncTask *task)
     refr = dpb->refr;
 
     // update slice info
-    h264e_slice_update(&p->slice, p->cfg, &p->sps, dpb->curr);
+    h264e_slice_update(&p->slice, p->cfg, &p->sps, &p->pps, dpb->curr);
 
     // update frame usage
     frms->seq_idx = curr->seq_idx;
@@ -642,11 +645,6 @@ static MPP_RET h264e_proc_hal(void *ctx, HalEncTask *task)
     h264e_add_syntax(p, H264E_SYN_SLICE, &p->slice);
     h264e_add_syntax(p, H264E_SYN_FRAME, &p->frms);
     h264e_add_syntax(p, H264E_SYN_RC, &p->rc_syn);
-
-    task->valid = 1;
-    task->syntax.data   = &p->syntax[0];
-    task->syntax.number = p->syn_num;
-    task->is_intra = p->slice.idr_flag;
 
     /* check max temporal layer id */
     {
@@ -701,7 +699,17 @@ static MPP_RET h264e_proc_hal(void *ctx, HalEncTask *task)
 
         mpp_packet_set_length(pkt, length + prefix_bit);
         task->length += prefix_bit;
-    }
+
+        h264e_add_syntax(p, H264E_SYN_PREFIX, &p->prefix);
+    } else
+        h264e_add_syntax(p, H264E_SYN_PREFIX, NULL);
+
+    mlvec_rc_setup(p->mlvec, &task->rc_task->force);
+
+    task->valid = 1;
+    task->syntax.data   = &p->syntax[0];
+    task->syntax.number = p->syn_num;
+    task->is_intra = p->slice.idr_flag;
 
     h264e_dbg_func("leave\n");
 

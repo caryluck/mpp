@@ -402,13 +402,11 @@ static MPP_RET vpu_api_set_enc_cfg(MppCtx mpp_ctx, MppApi *mpi, MppEncCfg enc_cf
         }
 
         mpp_log_f("cfg->add_prefix %d\n", cfg->add_prefix);
-
-        if (extra_mode & EXTRA_CHANGE_ADD_PREFIX)
+        if (extra_mode & EXTRA_CHANGE_ADD_PREFIX) {
             mpp_enc_cfg_set_s32(enc_cfg, "h264:add_prefix", cfg->add_prefix);
+        }
 
-        mpp_log_f("cfg->slice_mbs %d -> 0\n", cfg->slice_mbs);
-        cfg->slice_mbs = 0;
-
+        mpp_log_f("cfg->slice_mbs %d\n", cfg->slice_mbs);
         if (extra_mode & EXTRA_CHANGE_SLICE_MBS) {
             if (cfg->slice_mbs) {
                 mpp_enc_cfg_set_u32(enc_cfg, "split:mode", MPP_ENC_SPLIT_BY_CTU);
@@ -1703,33 +1701,35 @@ RK_S32 VpuApiLegacy::control(VpuCodecContext *ctx, VPU_API_CMD cmd, void *param)
         mpicmd = MPP_ENC_SET_ROI_CFG;
     } break;
     case VPU_API_ENC_SET_MAX_TID: {
-        mpp_log_f("VPU_API_ENC_SET_MAX_TID\n");
         max_tid = *(RK_S32 *)param;
         updated |= VPU_API_ENC_MAX_TID_UPDATED;
+        mpp_log_f("VPU_API_ENC_SET_MAX_TID %d\n", max_tid);
         return 0;
     } break;
     case VPU_API_ENC_SET_MARK_LTR: {
-        mpp_log_f("VPU_API_ENC_SET_MARK_LTR\n");
         mark_ltr = *(RK_S32 *)param;
-        updated |= VPU_API_ENC_MARK_LTR_UPDATED;
+        if (mark_ltr >= 0) {
+            updated |= VPU_API_ENC_MARK_LTR_UPDATED;
+            mpp_log_f("VPU_API_ENC_SET_MARK_LTR %d\n", mark_ltr);
+        }
         return 0;
     } break;
     case VPU_API_ENC_SET_USE_LTR: {
-        mpp_log_f("VPU_API_ENC_SET_USE_LTR\n");
         use_ltr = *(RK_S32 *)param;
         updated |= VPU_API_ENC_USE_LTR_UPDATED;
+        mpp_log_f("VPU_API_ENC_SET_USE_LTR %d\n", use_ltr);
         return 0;
     } break;
     case VPU_API_ENC_SET_FRAME_QP: {
-        mpp_log_f("VPU_API_ENC_SET_FRAME_QP\n");
         frame_qp = *(RK_S32 *)param;
         updated |= VPU_API_ENC_FRAME_QP_UPDATED;
+        mpp_log_f("VPU_API_ENC_SET_FRAME_QP %d\n", frame_qp);
         return 0;
     } break;
     case VPU_API_ENC_SET_BASE_LAYER_PID: {
-        mpp_log_f("VPU_API_ENC_SET_BASE_LAYER_PID\n");
         base_layer_pid = *(RK_S32 *)param;
         updated |= VPU_API_ENC_BASE_PID_UPDATED;
+        mpp_log_f("VPU_API_ENC_SET_BASE_LAYER_PID %d\n", base_layer_pid);
         return 0;
     } break;
     case VPU_API_GET_EXTRA_INFO: {

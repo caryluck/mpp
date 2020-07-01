@@ -39,7 +39,7 @@ void h264e_slice_init(H264eSlice *slice, H264eReorderInfo *reorder,
 }
 
 RK_S32 h264e_slice_update(H264eSlice *slice, MppEncCfgSet *cfg,
-                          SynH264eSps *sps, H264eDpbFrm *frm)
+                          SynH264eSps *sps, SynH264ePps *pps, H264eDpbFrm *frm)
 {
     MppEncH264Cfg *h264 = &cfg->codec.h264;
     RK_S32 is_idr = frm->status.is_idr;
@@ -60,6 +60,7 @@ RK_S32 h264e_slice_update(H264eSlice *slice, MppEncCfgSet *cfg,
     slice->pic_parameter_set_id = 0;
     slice->frame_num = frm->frame_num;
     slice->num_ref_idx_override = 0;
+    slice->pps_pic_init_qp = pps->pic_init_qp;
     slice->qp_delta = 0;
     slice->cabac_init_idc = h264->entropy_coding_mode ? h264->cabac_init_idc : -1;
     slice->disable_deblocking_filter_idc = h264->deblock_disable;
@@ -83,6 +84,13 @@ RK_S32 h264e_slice_update(H264eSlice *slice, MppEncCfgSet *cfg,
     else
         slice->long_term_reference_flag = 0;
 
+    return MPP_OK;
+}
+
+MPP_RET h264e_slice_set_fix_qp(H264eSlice *slice, RK_S32 qp)
+{
+    slice->qp_delta = qp - slice->pps_pic_init_qp;
+    mpp_log_f("set fix qp %d delta %d\n", qp, slice->qp_delta);
     return MPP_OK;
 }
 
@@ -495,6 +503,20 @@ RK_S32 h264e_slice_read(H264eSlice *slice, void *p, RK_S32 size)
 
     h264e_dbg_slice("used bit %2d total aligned length\n", bit.used_bits);
 
+    if (h264e_debug & H264E_DBG_SLICE) {
+        RK_S32 pos = 0;
+        RK_S32 i;
+        char log[256];
+        RK_U8 *tmp = (RK_U8 *)p;
+
+        pos = sprintf(log + pos, "hw stream: ");
+        for (i = 0; i < 16; i++) {
+            pos += sprintf(log + pos, "%02x ", tmp[i]);
+        }
+        pos += sprintf(log + pos, "\n");
+        h264e_dbg_slice(log);
+    }
+
     return bit_cnt;
 }
 
@@ -564,7 +586,7 @@ RK_S32 h264e_slice_write(H264eSlice *slice, void *p, RK_U32 size)
         marking->idr_flag = 0;
 
     // Force to use poc type 0 here
-    {
+    if (slice->pic_order_cnt_type == 0) {
         RK_S32 pic_order_cnt_lsb = slice->pic_order_cnt_lsb;
         RK_S32 max_poc_lsb = (1 << slice->log2_max_poc_lsb) - 1;
 
@@ -575,6 +597,8 @@ RK_S32 h264e_slice_write(H264eSlice *slice, void *p, RK_U32 size)
         mpp_writer_put_bits(s, pic_order_cnt_lsb, slice->log2_max_poc_lsb);
         h264e_dbg_slice("used bit %2d pic_order_cnt_lsb %d\n",
                         mpp_writer_bits(s), pic_order_cnt_lsb);
+    } else {
+        mpp_assert(slice->pic_order_cnt_type == 2);
     }
 
     /* num_ref_idx_override */
@@ -594,13 +618,12 @@ RK_S32 h264e_slice_write(H264eSlice *slice, void *p, RK_U32 size)
         ret = h264e_reorder_rd_op(slice->reorder, &rplmo);
 
         /* ref_pic_list_modification_flag */
-        mpp_writer_put_bits(s, (ret == MPP_OK), 1);
-        h264e_dbg_slice("used bit %2d ref_pic_list_modification_flag 1\n",
-                        mpp_writer_bits(s));
+        slice->ref_pic_list_modification_flag = (ret == MPP_OK);
+        mpp_writer_put_bits(s, slice->ref_pic_list_modification_flag, 1);
+        h264e_dbg_slice("used bit %2d ref_pic_list_modification_flag %d\n",
+                        mpp_writer_bits(s), slice->ref_pic_list_modification_flag);
 
-        if (ret == MPP_OK) {
-            slice->ref_pic_list_modification_flag = 1;
-
+        if (slice->ref_pic_list_modification_flag) {
             /* modification_of_pic_nums_idc */
             mpp_writer_put_ue(s, rplmo.modification_of_pic_nums_idc);
             h264e_dbg_slice("used bit %2d modification_of_pic_nums_idc %d\n",
@@ -717,26 +740,52 @@ RK_S32 h264e_slice_move(RK_U8 *dst, RK_U8 *src, RK_S32 dst_bit, RK_S32 src_bit, 
         if (h264e_debug & H264E_DBG_SLICE)
             mpp_log_f("direct copy %p -> %p %d\n", src, dst, src_len);
 
+        h264e_dbg_slice("bit [%d %d] [%d %d] [%d %d] len %d\n",
+                        src_bit, dst_bit, src_byte, dst_byte,
+                        src_bit_r, dst_bit_r, src_len);
+
         memcpy(dst + dst_byte, src + src_byte, src_len);
         return diff_len;
     }
 
-    RK_U8 *psrc = src + src_byte;
-    RK_U8 *pdst = dst + dst_byte;
+    RK_U8 *psrc = src + src_byte - 1;
+    RK_U8 *pdst = dst + dst_byte - 1;
 
-    RK_U16 tmp16a, tmp16b, tmp16c, last_tmp;
+    RK_U16 tmp16a, tmp16b, tmp16c, last_tmp, dst_mask;
     RK_U8 tmp0, tmp1;
-    RK_U32 loop = src_len;
+    RK_U32 loop = src_len + (src_bit_r > 0);
     RK_U32 i = 0;
     RK_U32 src_zero_cnt = 0;
     RK_U32 dst_zero_cnt = 0;
     RK_U32 dst_len = 0;
 
-    if (h264e_debug & H264E_DBG_SLICE)
-        mpp_log("bit [%d %d] [%d %d] loop %d\n", src_bit, dst_bit,
-                src_bit_r, dst_bit_r, loop);
+    if (h264e_debug & H264E_DBG_SLICE) {
+        RK_S32 pos = 0;
+        char log[256];
 
-    last_tmp = pdst[0] >> (8 - dst_bit_r) << (8 - dst_bit_r);
+        pos = sprintf(log + pos, "src stream: ");
+        for (i = 0; i < 16; i ++) {
+            pos += sprintf(log + pos, "%02x ", src[i]);
+        }
+        pos += sprintf(log + pos, "\n");
+        h264e_dbg_slice(log);
+
+        pos = 0;
+        pos = sprintf(log + pos, "dst stream: ");
+        for (i = 0; i < 16; i ++) {
+            pos += sprintf(log + pos, "%02x ", dst[i]);
+        }
+        pos += sprintf(log + pos, "\n");
+        h264e_dbg_slice(log);
+
+        h264e_dbg_slice("bit [%d %d] [%d %d] [%d %d] loop %d\n",
+                        src_bit, dst_bit, src_byte, dst_byte,
+                        src_bit_r, dst_bit_r, loop);
+    }
+
+    last_tmp = ((RK_U16)pdst[0] << 8) | pdst[1];
+    dst_mask = 0xFFFF << (8 - dst_bit_r);
+    h264e_dbg_slice("pdst[0] %02x pdst[0] %02x dst_mask %04x\n", pdst[0], pdst[1], dst_mask);
 
     for (i = 0; i < loop; i++) {
         if (psrc[0] == 0) {
@@ -771,7 +820,7 @@ RK_S32 h264e_slice_move(RK_U8 *dst, RK_U8 *src, RK_S32 dst_bit, RK_S32 src_bit, 
         }
 
         if (dst_bit_r)
-            tmp16c = tmp16b >> dst_bit_r | (last_tmp >> (8 - dst_bit_r) <<  (16 - dst_bit_r));
+            tmp16c = tmp16b >> dst_bit_r | ((last_tmp << 8) & dst_mask);
         else
             tmp16c = tmp16b;
 
