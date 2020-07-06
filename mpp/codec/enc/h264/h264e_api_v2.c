@@ -417,9 +417,9 @@ static MPP_RET h264e_proc_h264_cfg(H264eCtx *p, MppEncH264Cfg *dst, MppEncH264Cf
         }
 
         if (change & MPP_ENC_H264_CFG_CHANGE_ADD_PREFIX) {
-            dst->add_prefix = src->add_prefix;
+            dst->prefix_mode = src->prefix_mode;
 
-            static_cfg.add_prefix = src->add_prefix;
+            static_cfg.add_prefix = src->prefix_mode;
             static_cfg.change |= MLVEC_CHANGE_ADD_PREFIX_NAL;
         }
 
@@ -611,7 +611,7 @@ static MPP_RET h264e_proc_dpb(void *ctx, HalEncTask *task)
     refr = dpb->refr;
 
     // update slice info
-    h264e_slice_update(&p->slice, p->cfg, &p->sps, &p->pps, dpb->curr);
+    h264e_slice_update(&p->slice, p->cfg, &p->sps, dpb->curr);
 
     // update frame usage
     frms->seq_idx = curr->seq_idx;
@@ -670,7 +670,7 @@ static MPP_RET h264e_proc_hal(void *ctx, HalEncTask *task)
     }
 
     /* NOTE: prefix nal is added after SEI packet and before hw_stream */
-    if (h264->add_prefix || h264->max_tid) {
+    if (h264->prefix_mode || h264->max_tid) {
         H264ePrefixNal *prefix = &p->prefix;
         H264eSlice *slice = &p->slice;
         EncFrmStatus *frm = &task->rc_task->frm;

@@ -536,7 +536,6 @@ static void mpp_enc_proc_cfg(MppEncImpl *enc)
     }
 
     if (check_resend_hdr(enc->cmd, enc->param, &enc->cfg)) {
-        mpp_log_f("check_resend_hdr\n");
         enc->frm_cfg.force_flag |= ENC_FORCE_IDR;
         enc->hdr_status.val = 0;
     }

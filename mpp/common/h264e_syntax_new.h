@@ -270,7 +270,6 @@ typedef struct H264eSlice_t {
     RK_U32      pic_parameter_set_id;
     RK_S32      frame_num;
     RK_S32      num_ref_idx_override;
-    RK_S32      pps_pic_init_qp;
     RK_S32      qp_delta;
     RK_U32      cabac_init_idc;
     RK_U32      disable_deblocking_filter_idc;

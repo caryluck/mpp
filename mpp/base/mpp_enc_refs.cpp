@@ -563,8 +563,15 @@ MPP_RET mpp_enc_refs_dryrun(MppEncRefs refs)
 
                 lt_cfg->cnt++;
                 if (lt_cfg->cnt >= lt_cfg->len) {
-                    lt_cfg->cnt = 0;
-                    lt_cfg->idx++;
+                    if (lt_cfg->len) {
+                        /* when there is loop len loop lt_cfg */
+                        lt_cfg->cnt = 0;
+                        lt_cfg->idx++;
+                    } else {
+                        /* else just set lt_cfg once */
+                        lt_cfg->cnt = 1;
+                        lt_cfg->idx = 1;
+                    }
                 }
             }
 
@@ -588,7 +595,7 @@ MPP_RET mpp_enc_refs_dryrun(MppEncRefs refs)
     }
 
     cleanup_cpb_refs(cpb);
-    info->max_st_cnt = cpb_st_used_size;
+    info->max_st_cnt = cpb_st_used_size ? cpb_st_used_size : 1;
 
 DONE:
     info->dpb_size = info->max_lt_cnt + info->max_st_cnt;
@@ -709,8 +716,15 @@ MPP_RET mpp_enc_refs_get_cpb(MppEncRefs refs, EncCpbStatus *status)
 
         lt_cfg->cnt++;
         if (lt_cfg->cnt >= lt_cfg->len) {
-            lt_cfg->cnt = 0;
-            lt_cfg->idx++;
+            if (lt_cfg->len) {
+                /* when there is loop len loop lt_cfg */
+                lt_cfg->cnt = 0;
+                lt_cfg->idx++;
+            } else {
+                /* else just set lt_cfg once */
+                lt_cfg->cnt = 1;
+                lt_cfg->idx = 1;
+            }
         }
     }
 

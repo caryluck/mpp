@@ -644,7 +644,7 @@ typedef struct MppEncH264Cfg_t {
     /* extra mode config */
     RK_S16              max_ltr_frames;
     RK_S16              max_tid;
-    RK_S16              add_prefix;
+    RK_S16              prefix_mode;
     RK_S16              base_layer_pid;
 
     /* extra info */

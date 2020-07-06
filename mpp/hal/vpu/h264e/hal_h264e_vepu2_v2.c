@@ -618,8 +618,6 @@ static void h264e_vepu2_get_mbrc(HalH264eVepuMbRc *mb_rc, H264eVpu2RegSet *reg)
     mb_rc->less_mad_count   = (reg_val[VEPU_REG_MB_CTRL / 4] >> 16) & 0xffff;
     mb_rc->rlc_count        = reg_val[VEPU_REG_RLC_SUM / 4] & 0x3fffff;
 
-    mpp_log_f("hdr %d free %d out %d\n", mb_rc->hdr_strm_size, mb_rc->hdr_free_size, mb_rc->out_strm_size);
-
     for (i = 0; i < CHECK_POINTS_MAX; i++) {
         RK_U32 cpt = VEPU_REG_CHECKPOINT_RESULT(reg_val[cpt_idx]);
 

@@ -187,6 +187,14 @@ static MPP_RET vpu_api_set_enc_cfg(MppCtx mpp_ctx, MppApi *mpi, MppEncCfg enc_cf
 
             switch (cfg->max_tid) {
             case 0 : {
+                st_ref[0].is_non_ref    = 0;
+                st_ref[0].temporal_id   = 0;
+                st_ref[0].ref_mode      = REF_TO_PREV_REF_FRM;
+                st_ref[0].ref_arg       = 0;
+                st_ref[0].repeat        = 0;
+
+                st_cfg_cnt = 1;
+                tid0_loop = 1;
             } break;
             case 1 : {
                 /* set tsvc2 st-ref struct */
@@ -197,7 +205,7 @@ static MPP_RET vpu_api_set_enc_cfg(MppCtx mpp_ctx, MppApi *mpi, MppEncCfg enc_cf
                 st_ref[0].ref_arg       = 0;
                 st_ref[0].repeat        = 0;
                 /* st 1 layer 1 - non-ref */
-                st_ref[1].is_non_ref    = 0;
+                st_ref[1].is_non_ref    = 1;
                 st_ref[1].temporal_id   = 1;
                 st_ref[1].ref_mode      = REF_TO_TEMPORAL_LAYER;
                 st_ref[1].ref_arg       = 0;
@@ -329,7 +337,7 @@ static MPP_RET vpu_api_set_enc_cfg(MppCtx mpp_ctx, MppApi *mpi, MppEncCfg enc_cf
                 lt_ref[0].lt_idx        = 0;
                 lt_ref[0].temporal_id   = 0;
                 lt_ref[0].ref_mode      = REF_TO_PREV_LT_REF;
-                lt_ref[0].lt_gap        = tid0_loop - 1;
+                lt_ref[0].lt_gap        = 0;
                 lt_ref[0].lt_delay      = 0;
 
                 lt_cfg_cnt = 1;
@@ -338,13 +346,13 @@ static MPP_RET vpu_api_set_enc_cfg(MppCtx mpp_ctx, MppApi *mpi, MppEncCfg enc_cf
                 lt_ref[0].lt_idx        = 0;
                 lt_ref[0].temporal_id   = 0;
                 lt_ref[0].ref_mode      = REF_TO_PREV_LT_REF;
-                lt_ref[0].lt_gap        = tid0_loop * 2 - 1;
+                lt_ref[0].lt_gap        = 0;
                 lt_ref[0].lt_delay      = 0;
 
                 lt_ref[1].lt_idx        = 1;
                 lt_ref[1].temporal_id   = 0;
                 lt_ref[1].ref_mode      = REF_TO_PREV_LT_REF;
-                lt_ref[1].lt_gap        = tid0_loop * 2 - 1;
+                lt_ref[1].lt_gap        = 0;
                 lt_ref[1].lt_delay      = tid0_loop;
 
                 lt_cfg_cnt = 2;
@@ -353,19 +361,19 @@ static MPP_RET vpu_api_set_enc_cfg(MppCtx mpp_ctx, MppApi *mpi, MppEncCfg enc_cf
                 lt_ref[0].lt_idx        = 0;
                 lt_ref[0].temporal_id   = 0;
                 lt_ref[0].ref_mode      = REF_TO_PREV_LT_REF;
-                lt_ref[0].lt_gap        = tid0_loop * 3 - 1;
+                lt_ref[0].lt_gap        = 0;
                 lt_ref[0].lt_delay      = 0;
 
                 lt_ref[1].lt_idx        = 1;
                 lt_ref[1].temporal_id   = 0;
                 lt_ref[1].ref_mode      = REF_TO_PREV_LT_REF;
-                lt_ref[1].lt_gap        = tid0_loop * 3 - 1;
+                lt_ref[1].lt_gap        = 0;
                 lt_ref[1].lt_delay      = tid0_loop;
 
                 lt_ref[2].lt_idx        = 2;
                 lt_ref[2].temporal_id   = 0;
                 lt_ref[2].ref_mode      = REF_TO_PREV_LT_REF;
-                lt_ref[2].lt_gap        = tid0_loop * 3 - 1;
+                lt_ref[2].lt_gap        = 0;
                 lt_ref[2].lt_delay      = tid0_loop * 2;
 
                 lt_cfg_cnt = 3;
@@ -403,7 +411,7 @@ static MPP_RET vpu_api_set_enc_cfg(MppCtx mpp_ctx, MppApi *mpi, MppEncCfg enc_cf
 
         mpp_log_f("cfg->add_prefix %d\n", cfg->add_prefix);
         if (extra_mode & EXTRA_CHANGE_ADD_PREFIX) {
-            mpp_enc_cfg_set_s32(enc_cfg, "h264:add_prefix", cfg->add_prefix);
+            mpp_enc_cfg_set_s32(enc_cfg, "h264:prefix_mode", cfg->add_prefix);
         }
 
         mpp_log_f("cfg->slice_mbs %d\n", cfg->slice_mbs);
