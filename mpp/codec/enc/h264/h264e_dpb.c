@@ -357,6 +357,7 @@ void h264e_dpb_build_marking(H264eDpb *dpb)
     }
 
     marking->idr_flag = 0;
+    marking->long_term_reference_flag = 0;
     marking->adaptive_ref_pic_buffering = 0;
 
     h264e_dbg_dpb("frm %d ref %d lt %d T%d\n",
