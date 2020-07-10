@@ -783,13 +783,6 @@ MPP_RET h264e_vepu_stream_amend_config(HalH264eVepuStreamAmend *ctx,
     if (ref->lt_cfg_cnt || ref->st_cfg_cnt > 1) {
         ctx->enable = 1;
         ctx->slice_enabled = 0;
-        ctx->slice = slice;
-        ctx->prefix = prefix;
-
-        ctx->packet = packet;
-        ctx->buf_base = mpp_packet_get_length(packet);
-        ctx->old_length = 0;
-        ctx->new_length = 0;
 
         if (NULL == ctx->dst_buf)
             ctx->dst_buf = mpp_calloc(RK_U8, ctx->buf_size);
@@ -800,6 +793,13 @@ MPP_RET h264e_vepu_stream_amend_config(HalH264eVepuStreamAmend *ctx,
         MPP_FREE(ctx->src_buf);
         memset(ctx, 0, sizeof(*ctx));
     }
+
+    ctx->slice = slice;
+    ctx->prefix = prefix;
+    ctx->packet = packet;
+    ctx->buf_base = mpp_packet_get_length(packet);
+    ctx->old_length = 0;
+    ctx->new_length = 0;
 
     return MPP_OK;
 }
@@ -958,6 +958,47 @@ MPP_RET h264e_vepu_stream_amend_proc(HalH264eVepuStreamAmend *ctx)
     } while (1);
 
     ctx->new_length = final_len;
+
+    return MPP_OK;
+}
+
+MPP_RET h264e_vepu_stream_amend_sync_ref_idc(HalH264eVepuStreamAmend *ctx)
+{
+    H264eSlice *slice = ctx->slice;
+    MppPacket pkt = ctx->packet;
+    RK_U8 *p = mpp_packet_get_pos(pkt);
+    RK_S32 base = ctx->buf_base;
+    RK_S32 len = ctx->old_length;
+    RK_S32 last_slice = 0;
+
+    p += base;
+
+    do {
+        RK_U32 nal_len = 0;
+
+        // copy hw stream to stream buffer first
+        if (slice->is_multi_slice) {
+            nal_len = get_next_nal(p, &len);
+            last_slice = (len == 0);
+        } else {
+            nal_len = len;
+            last_slice = 1;
+        }
+
+        RK_U8 val = p[4];
+        RK_S32 hw_nal_ref_idc = (val >> 5) & 0x3;
+
+        if (hw_nal_ref_idc != slice->nal_reference_idc) {
+            val = val & (~0x60);
+            val |= (slice->nal_reference_idc << 5) & 0x60;
+            p[4] = val;
+        }
+
+        if (last_slice)
+            break;
+
+        p += nal_len;
+    } while (1);
 
     return MPP_OK;
 }
