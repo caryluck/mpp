@@ -195,25 +195,26 @@ static MPP_RET vpu_api_set_enc_cfg(MppCtx mpp_ctx, MppApi *mpi, MppEncCfg enc_cf
 
                 st_cfg_cnt = 1;
                 tid0_loop = 1;
+                mpp_log_f("no tsvc\n");
             } break;
             case 1 : {
                 /* set tsvc2 st-ref struct */
                 /* st 0 layer 0 - ref */
                 st_ref[0].is_non_ref    = 0;
                 st_ref[0].temporal_id   = 0;
-                st_ref[0].ref_mode      = REF_TO_TEMPORAL_LAYER;
+                st_ref[0].ref_mode      = REF_TO_PREV_REF_FRM;
                 st_ref[0].ref_arg       = 0;
                 st_ref[0].repeat        = 0;
                 /* st 1 layer 1 - non-ref */
                 st_ref[1].is_non_ref    = 1;
                 st_ref[1].temporal_id   = 1;
-                st_ref[1].ref_mode      = REF_TO_TEMPORAL_LAYER;
+                st_ref[1].ref_mode      = REF_TO_PREV_REF_FRM;
                 st_ref[1].ref_arg       = 0;
                 st_ref[1].repeat        = 0;
                 /* st 2 layer 0 - ref */
                 st_ref[2].is_non_ref    = 0;
                 st_ref[2].temporal_id   = 0;
-                st_ref[2].ref_mode      = REF_TO_TEMPORAL_LAYER;
+                st_ref[2].ref_mode      = REF_TO_PREV_REF_FRM;
                 st_ref[2].ref_arg       = 0;
                 st_ref[2].repeat        = 0;
 
@@ -1650,6 +1651,7 @@ RK_S32 VpuApiLegacy::control(VpuCodecContext *ctx, VPU_API_CMD cmd, void *param)
         return 0;
     } break;
     case VPU_API_ENC_SETIDRFRAME : {
+        mpp_log_f("VPU_API_ENC_SETIDRFRAME\n");
         mpicmd = MPP_ENC_SET_IDR_FRAME;
     } break;
     case VPU_API_SET_VPUMEM_CONTEXT: {

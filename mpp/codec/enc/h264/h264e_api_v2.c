@@ -574,11 +574,12 @@ static MPP_RET h264e_start(void *ctx, HalEncTask *task)
     if (force_use_lt_idx >= 0) {
         dynamic_cfg.change |= MLVEC_CHANGE_USE_LTR;
         dynamic_cfg.use_ltr = force_use_lt_idx;
+        mpp_log_f("use_ltr %d\n", force_use_lt_idx);
     }
     if (force_frame_qp >= 0) {
         dynamic_cfg.change |= MLVEC_CHANGE_FRAME_QP;
         dynamic_cfg.frame_qp = force_frame_qp;
-        mpp_log_f("force_frame_qp %d\n", force_frame_qp);
+        mpp_log_f("frm %d force_frame_qp %d\n", task->rc_task->frm.seq_idx, force_frame_qp);
     }
 
     if (dynamic_cfg.change)

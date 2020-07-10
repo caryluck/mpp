@@ -651,7 +651,7 @@ MPP_RET mpp_enc_refs_get_cpb(MppEncRefs refs, EncCpbStatus *status)
     MppEncCfgSet *cfg_set = p->cfg_set;
     MppEncRefCfgImpl *cfg = p->ref_cfg;
     EncVirtualCpb *cpb = &p->cpb;
-    MppEncRefStFrmCfg *st_cfg = &cfg->st_cfg[cpb->st_cfg_pos];
+    MppEncRefStFrmCfg *st_cfg = NULL;
     MppEncRefFrmUsrCfg *usr_cfg = &p->usr_cfg;
     EncFrmStatus *frm = &status->curr;
     EncFrmStatus *ref = &status->refr;
@@ -672,6 +672,7 @@ MPP_RET mpp_enc_refs_get_cpb(MppEncRefs refs, EncCpbStatus *status)
     if (usr_cfg->force_flag & ENC_FORCE_IDR) {
         usr_cfg->force_flag &= (~ENC_FORCE_IDR);
         cleanup_cpb = 1;
+        mpp_log_f("ENC_FORCE_IDR");
     }
 
     if (cleanup_cpb) {
@@ -680,6 +681,7 @@ MPP_RET mpp_enc_refs_get_cpb(MppEncRefs refs, EncCpbStatus *status)
     }
 
     cpb->frm_idx++;
+    st_cfg = &cfg->st_cfg[cpb->st_cfg_pos];
     /* step 2. updated by st_cfg */
     set_st_cfg_to_frm(frm, cpb->seq_idx++, st_cfg);
 

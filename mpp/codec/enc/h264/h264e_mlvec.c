@@ -157,12 +157,16 @@ MPP_RET mlvec_frame_start(H264eMlvecCtx ctx, MppEncRefFrmUsrCfg *cfg)
     if (cfg_dy->mark_ltr >= 0) {
         cfg->force_flag |= ENC_FORCE_LT_REF_IDX;
         cfg->force_lt_idx = cfg_dy->mark_ltr;
+        mpp_log_f("force_lt_idx %d\n", cfg->force_lt_idx);
+        cfg_dy->mark_ltr = -1;
     }
 
     if (cfg_dy->use_ltr >= 0) {
         cfg->force_flag |= ENC_FORCE_REF_MODE;
         cfg->force_ref_mode = REF_TO_LT_REF_IDX;
         cfg->force_ref_arg = cfg_dy->use_ltr;
+        mpp_log_f("force_ref mode %d arg %d\n", cfg->force_ref_mode, cfg->force_ref_arg);
+        cfg_dy->use_ltr = -1;
     }
 
     return MPP_OK;

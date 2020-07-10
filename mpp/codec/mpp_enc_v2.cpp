@@ -1399,6 +1399,7 @@ MPP_RET mpp_enc_control_v2(MppEnc ctx, MpiCmd cmd, void *param)
     } break;
     case MPP_ENC_SET_IDR_FRAME : {
         enc_dbg_ctrl("set idr frame\n");
+        mpp_log_f("MPP_ENC_SET_IDR_FRAME\n");
         enc->frm_cfg.force_flag |= ENC_FORCE_IDR;
         enc->frm_cfg.force_idr++;
     } break;
