@@ -1718,10 +1718,10 @@ RK_S32 VpuApiLegacy::control(VpuCodecContext *ctx, VPU_API_CMD cmd, void *param)
     } break;
     case VPU_API_ENC_SET_MARK_LTR: {
         mark_ltr = *(RK_S32 *)param;
-        if (mark_ltr >= 0) {
+        if (mark_ltr >= 0)
             updated |= VPU_API_ENC_MARK_LTR_UPDATED;
-            mpp_log_f("VPU_API_ENC_SET_MARK_LTR %d\n", mark_ltr);
-        }
+
+        mpp_log_f("VPU_API_ENC_SET_MARK_LTR %d\n", mark_ltr);
         return 0;
     } break;
     case VPU_API_ENC_SET_USE_LTR: {

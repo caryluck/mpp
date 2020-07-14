@@ -694,9 +694,12 @@ static MPP_RET h264e_proc_hal(void *ctx, HalEncTask *task)
         prefix->discardable_flag = 0;
         prefix->output_flag = 1;
 
+        mpp_log_f("prefix nal idr %d ref_idc %d pri %d tid %d\n",
+                  prefix->idr_flag, prefix->nal_ref_idc, prefix->priority_id, prefix->temporal_id);
+
         RK_S32 prefix_bit = h264e_slice_write_prefix_nal_unit_svc(prefix, pos + length, size);
 
-        prefix_bit /= 8;
+        prefix_bit = (prefix_bit + 7) / 8;
 
         mpp_packet_set_length(pkt, length + prefix_bit);
         task->length += prefix_bit;

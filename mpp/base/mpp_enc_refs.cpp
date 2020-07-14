@@ -103,8 +103,6 @@ typedef struct MppEncRefsImpl_t {
     RK_S32              usr_cfg_updated;
     MppEncRefFrmUsrCfg  usr_cfg;
 
-    RK_S32              tid0_lt_idx;
-
     EncVirtualCpb       cpb;
     EncVirtualCpb       cpb_stash;
 } MppEncRefsImpl;
@@ -279,6 +277,8 @@ static void set_lt_cfg_to_frm(EncFrmStatus *frm, RefsCnt *lt_cfg)
     frm->is_lt_ref = 1;
     frm->temporal_id = lt_cfg->tid;
     frm->lt_idx = lt_cfg->lt_idx;
+
+    mpp_log_f("set to lt-ref idx %d tid %d\n", lt_cfg->lt_idx, lt_cfg->tid);
 
     if (lt_cfg->ref_mode != REF_TO_ST_REF_SETUP) {
         frm->ref_mode = lt_cfg->ref_mode;
@@ -731,30 +731,25 @@ MPP_RET mpp_enc_refs_get_cpb(MppEncRefs refs, EncCpbStatus *status)
     }
 
     /* step 4. process force flags and force ref_mode */
-    if ((usr_cfg->force_flag & ENC_FORCE_LT_REF_IDX) ||
-        (usr_cfg->force_tid0_lt && frm->temporal_id == 0)) {
+    if (usr_cfg->force_flag & ENC_FORCE_LT_REF_IDX) {
         frm->is_non_ref = 0;
         frm->is_lt_ref = 1;
-        if (usr_cfg->force_flag & ENC_FORCE_LT_REF_IDX)
-            frm->lt_idx = usr_cfg->force_lt_idx;
-        else {
-            /* force tid0 lt path */
-            mpp_log_f("lt_idx %d force_tid0_lt %d\n", frm->lt_idx, usr_cfg->force_tid0_lt);
-            frm->lt_idx = p->tid0_lt_idx++;
-            if (p->tid0_lt_idx >= usr_cfg->force_tid0_lt)
-                p->tid0_lt_idx = 0;
-        }
+        frm->lt_idx = usr_cfg->force_lt_idx;
         /* lt_ref will be forced to tid 0 */
         frm->temporal_id = 0;
+
+        mpp_log_f("force to lt-ref idx %d tid %d\n", frm->lt_idx, frm->temporal_id);
 
         /* reset st_cfg to next loop */
         cpb->st_cfg_repeat_pos = 0;
         cpb->st_cfg_pos = 1;
 
+#if 0
         for (i = 0; i < cfg->lt_cfg_cnt; i++, lt_cfg++) {
             lt_cfg->cnt = 0;
             lt_cfg->idx = 0;
         }
+#endif
         usr_cfg->force_flag &= ~ENC_FORCE_LT_REF_IDX;
     }
 

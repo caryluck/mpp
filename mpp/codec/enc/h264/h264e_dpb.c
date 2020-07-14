@@ -416,6 +416,8 @@ MPP_RET h264e_dpb_proc(H264eDpb *dpb, EncCpbStatus *cpb)
             frames[i].status.valid = 0;
         }
         dpb->used_size = 0;
+        dpb->curr_max_lt_idx = 0;
+        dpb->next_max_lt_idx = 0;
     }
 
     if (h264e_debug & H264E_DBG_DPB)

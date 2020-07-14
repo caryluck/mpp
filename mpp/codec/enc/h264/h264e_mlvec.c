@@ -41,8 +41,8 @@ static void reset_dynamic_cfg(H264eMlvecDynamicCfg *cfg)
     cfg->change = 0;
     cfg->mark_ltr = -1;
     cfg->use_ltr = -1;
-    cfg->frame_qp = -1;
     cfg->base_layer_pid = -1;
+    /* NOTE: frame qp can not be reset */
 }
 
 MPP_RET mlvec_init(H264eMlvecCtx *ctx)
@@ -58,6 +58,7 @@ MPP_RET mlvec_init(H264eMlvecCtx *ctx)
         mpp_err_f("failed to create MLVEC context\n");
         ret = MPP_ERR_NOMEM;
     } else {
+        p->dynamic_cfg.frame_qp = -1;
         reset_dynamic_cfg(&p->dynamic_cfg);
     }
     *ctx = p;
@@ -183,7 +184,7 @@ MPP_RET mlvec_rc_setup(H264eMlvecCtx ctx, EncRcForceCfg *cfg)
     H264eMlvecDynamicCfg *cfg_dy = &impl->dynamic_cfg;
 
     mpp_log_f("change %x frame_qp %d\n", cfg_dy->change, cfg_dy->frame_qp);
-    if (cfg_dy->change & MLVEC_CHANGE_FRAME_QP) {
+    if (cfg_dy->frame_qp >= 0) {
         cfg->force_flag = ENC_RC_FORCE_QP;
         cfg->force_qp = cfg_dy->frame_qp;
     } else {

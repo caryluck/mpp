@@ -874,7 +874,7 @@ MPP_RET h264e_vepu_stream_amend_proc(HalH264eVepuStreamAmend *ctx)
 
             RK_S32 prefix_bit = h264e_slice_write_prefix_nal_unit_svc(prefix, dst_buf, buf_size);
 
-            prefix_bit /= 8;
+            prefix_bit = (prefix_bit + 7) / 8;
 
             dst_buf += prefix_bit;
             buf_size -= prefix_bit;
