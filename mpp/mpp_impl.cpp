@@ -106,13 +106,13 @@ typedef struct MppOpsInfo_t {
  * dec_cfg - decoder input stream offset and size info in format [u32 offset|u32 size]
  * dec_frm - decoder output frame file with snapshot method
  */
-static const char dec_pkt_path[] = "/data/tmp/mpp_dec_in.bin";
-static const char dec_ops_path[] = "/data/tmp/mpp_dec_ops.bin";
-static const char dec_frm_path[] = "/data/tmp/mpp_dec_out.bin";
+static const char dec_pkt_path[] = "/data/mpp_dec_in.bin";
+static const char dec_ops_path[] = "/data/mpp_dec_ops.bin";
+static const char dec_frm_path[] = "/data/mpp_dec_out.bin";
 
-static const char enc_frm_path[] = "/data/tmp/mpp_enc_in.bin";
-static const char enc_ops_path[] = "/data/tmp/mpp_enc_ops.bin";
-static const char enc_pkt_path[] = "/data/tmp/mpp_enc_out.bin";
+static const char enc_frm_path[] = "/data/mpp_enc_in.bin";
+static const char enc_ops_path[] = "/data/mpp_enc_ops.bin";
+static const char enc_pkt_path[] = "/data/mpp_enc_out.bin";
 
 static FILE *try_env_file(const char *env, const char *path, pid_t tid)
 {

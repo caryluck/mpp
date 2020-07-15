@@ -150,8 +150,6 @@ MPP_RET mlvec_frame_start(H264eMlvecCtx ctx, MppEncRefFrmUsrCfg *cfg)
     H264eMlvecStaticCfg *cfg_st = &impl->static_cfg;
     H264eMlvecDynamicCfg *cfg_dy = &impl->dynamic_cfg;
 
-    cfg->force_tid0_lt = cfg_st->ltr_frames;
-
     if (cfg_st->max_temporal_layer_count)
         cfg_st->add_prefix = 1;
 

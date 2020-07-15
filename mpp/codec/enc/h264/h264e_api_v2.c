@@ -357,42 +357,71 @@ static MPP_RET h264e_proc_h264_cfg(H264eCtx *p, MppEncH264Cfg *dst, MppEncH264Cf
     // TODO: do codec check first
     if (change & MPP_ENC_H264_CFG_STREAM_TYPE)
         dst->stream_type = src->stream_type;
-    if (change & MPP_ENC_H264_CFG_CHANGE_PROFILE) {
+    if ((change & MPP_ENC_H264_CFG_CHANGE_PROFILE) &&
+        ((dst->profile != src->profile) || (dst->level != src->level))) {
         dst->profile = src->profile;
         dst->level = src->level;
+        dst->change |= MPP_ENC_H264_CFG_CHANGE_PROFILE;
     }
-    if (change & MPP_ENC_H264_CFG_CHANGE_ENTROPY) {
+    if ((change & MPP_ENC_H264_CFG_CHANGE_ENTROPY) &&
+        ((dst->entropy_coding_mode != src->entropy_coding_mode) ||
+         (dst->cabac_init_idc != src->cabac_init_idc))) {
         dst->entropy_coding_mode = src->entropy_coding_mode;
         dst->cabac_init_idc = src->cabac_init_idc;
+        dst->change |= MPP_ENC_H264_CFG_CHANGE_ENTROPY;
     }
-    if (change & MPP_ENC_H264_CFG_CHANGE_TRANS_8x8)
+    if ((change & MPP_ENC_H264_CFG_CHANGE_TRANS_8x8) &&
+        (dst->transform8x8_mode != src->transform8x8_mode)) {
         dst->transform8x8_mode = src->transform8x8_mode;
-    if (change & MPP_ENC_H264_CFG_CHANGE_CONST_INTRA)
+        dst->change |= MPP_ENC_H264_CFG_CHANGE_TRANS_8x8;
+    }
+    if ((change & MPP_ENC_H264_CFG_CHANGE_CONST_INTRA) &&
+        (dst->constrained_intra_pred_mode != src->constrained_intra_pred_mode)) {
         dst->constrained_intra_pred_mode = src->constrained_intra_pred_mode;
-    if (change & MPP_ENC_H264_CFG_CHANGE_CHROMA_QP) {
+        dst->change |= MPP_ENC_H264_CFG_CHANGE_CONST_INTRA;
+    }
+    if ((change & MPP_ENC_H264_CFG_CHANGE_CHROMA_QP) &&
+        (dst->chroma_cb_qp_offset != src->chroma_cb_qp_offset ||
+         dst->chroma_cr_qp_offset != src->chroma_cr_qp_offset)) {
         dst->chroma_cb_qp_offset = src->chroma_cb_qp_offset;
         dst->chroma_cr_qp_offset = src->chroma_cr_qp_offset;
+        dst->change |= MPP_ENC_H264_CFG_CHANGE_CHROMA_QP;
     }
-    if (change & MPP_ENC_H264_CFG_CHANGE_DEBLOCKING) {
+    if ((change & MPP_ENC_H264_CFG_CHANGE_DEBLOCKING) &&
+        ((dst->deblock_disable != src->deblock_disable) ||
+         (dst->deblock_offset_alpha != src->deblock_offset_alpha) ||
+         (dst->deblock_offset_beta != src->deblock_offset_beta))) {
         dst->deblock_disable = src->deblock_disable;
         dst->deblock_offset_alpha = src->deblock_offset_alpha;
         dst->deblock_offset_beta = src->deblock_offset_beta;
+        dst->change |= MPP_ENC_H264_CFG_CHANGE_DEBLOCKING;
     }
     if (change & MPP_ENC_H264_CFG_CHANGE_LONG_TERM)
         dst->use_longterm = src->use_longterm;
 
-    if (change & MPP_ENC_H264_CFG_CHANGE_SCALING_LIST)
+    if ((change & MPP_ENC_H264_CFG_CHANGE_SCALING_LIST) &&
+        (dst->scaling_list_mode != src->scaling_list_mode)) {
         dst->scaling_list_mode = src->scaling_list_mode;
+        dst->change |= MPP_ENC_H264_CFG_CHANGE_SCALING_LIST;
+    }
 
-    if (change & MPP_ENC_H264_CFG_CHANGE_QP_LIMIT) {
+    if ((change & MPP_ENC_H264_CFG_CHANGE_QP_LIMIT) &&
+        ((dst->qp_init != src->qp_init) ||
+         (dst->qp_max != src->qp_max) ||
+         (dst->qp_min != src->qp_min) ||
+         (dst->qp_max_step != src->qp_max_step))) {
         dst->qp_init = src->qp_init;
         dst->qp_max = src->qp_max;
         dst->qp_min = src->qp_min;
         dst->qp_max_step = src->qp_max_step;
+        dst->change |= MPP_ENC_H264_CFG_CHANGE_QP_LIMIT;
     }
-    if (change & MPP_ENC_H264_CFG_CHANGE_INTRA_REFRESH) {
+    if ((change & MPP_ENC_H264_CFG_CHANGE_INTRA_REFRESH) &&
+        ((dst->intra_refresh_mode != src->intra_refresh_mode) ||
+         (dst->intra_refresh_arg != src->intra_refresh_arg))) {
         dst->intra_refresh_mode = src->intra_refresh_mode;
         dst->intra_refresh_arg = src->intra_refresh_arg;
+        dst->change |= MPP_ENC_H264_CFG_CHANGE_INTRA_REFRESH;
     }
 
     {
@@ -402,29 +431,37 @@ static MPP_RET h264e_proc_h264_cfg(H264eCtx *p, MppEncH264Cfg *dst, MppEncH264Cf
         memset(&static_cfg, 0, sizeof(static_cfg));
         memset(&dynamic_cfg, 0, sizeof(dynamic_cfg));
 
-        if (change & MPP_ENC_H264_CFG_CHANGE_MAX_LTR) {
+        if ((change & MPP_ENC_H264_CFG_CHANGE_MAX_LTR) &&
+            (dst->max_ltr_frames != src->max_ltr_frames)) {
             dst->max_ltr_frames = src->max_ltr_frames;
+            dst->change |= MPP_ENC_H264_CFG_CHANGE_MAX_LTR;
 
             static_cfg.ltr_frames = src->max_ltr_frames;
             static_cfg.change |= MLVEC_CHANGE_LTR_FRAMES;
         }
 
-        if (change & MPP_ENC_H264_CFG_CHANGE_MAX_TID) {
+        if ((change & MPP_ENC_H264_CFG_CHANGE_MAX_TID) &&
+            (dst->max_tid != src->max_tid)) {
             dst->max_tid = src->max_tid;
+            dst->change |= MPP_ENC_H264_CFG_CHANGE_MAX_TID;
 
             static_cfg.max_temporal_layer_count = src->max_tid + 1;
             static_cfg.change |= MLVEC_CHANGE_MAX_TEMPORAL_LAYER_COUNT;
         }
 
-        if (change & MPP_ENC_H264_CFG_CHANGE_ADD_PREFIX) {
+        if ((change & MPP_ENC_H264_CFG_CHANGE_ADD_PREFIX) &&
+            (dst->prefix_mode != src->prefix_mode)) {
             dst->prefix_mode = src->prefix_mode;
+            dst->change |= MPP_ENC_H264_CFG_CHANGE_ADD_PREFIX;
 
             static_cfg.add_prefix = src->prefix_mode;
             static_cfg.change |= MLVEC_CHANGE_ADD_PREFIX_NAL;
         }
 
-        if (change & MPP_ENC_H264_CFG_CHANGE_BASE_LAYER_PID) {
+        if ((change & MPP_ENC_H264_CFG_CHANGE_BASE_LAYER_PID) &&
+            (dst->base_layer_pid != src->base_layer_pid)) {
             dst->base_layer_pid = src->base_layer_pid;
+            dst->change |= MPP_ENC_H264_CFG_CHANGE_BASE_LAYER_PID;
 
             dynamic_cfg.base_layer_pid = src->base_layer_pid;
             dynamic_cfg.change |= MLVEC_CHANGE_BASE_LAYER_PID;
@@ -440,7 +477,8 @@ static MPP_RET h264e_proc_h264_cfg(H264eCtx *p, MppEncH264Cfg *dst, MppEncH264Cf
     if (change & MPP_ENC_H264_CFG_CHANGE_VUI)
         dst->vui = src->vui;
 
-    dst->change |= change;
+    mpp_log_f("dst->change %08x\n", dst->change);
+
     return ret;
 }
 
@@ -475,6 +513,8 @@ static MPP_RET h264e_proc_cfg(void *ctx, MpiCmd cmd, void *param)
         MppEncCfgImpl *impl = (MppEncCfgImpl *)param;
         MppEncCfgSet *src = &impl->cfg;
 
+        mpp_log_f("MPP_ENC_SET_CFG\n");
+
         if (src->prep.change) {
             ret |= h264e_proc_prep_cfg(&cfg->prep, &src->prep);
             src->prep.change = 0;
@@ -493,18 +533,22 @@ static MPP_RET h264e_proc_cfg(void *ctx, MpiCmd cmd, void *param)
         }
     } break;
     case MPP_ENC_SET_PREP_CFG : {
+        mpp_log_f("MPP_ENC_SET_PREP_CFG\n");
         ret = h264e_proc_prep_cfg(&cfg->prep, param);
     } break;
     case MPP_ENC_SET_RC_CFG : {
+        mpp_log_f("MPP_ENC_SET_RC_CFG\n");
         ret = h264e_proc_rc_cfg(&cfg->rc, param);
     } break;
     case MPP_ENC_SET_CODEC_CFG : {
         MppEncCodecCfg *codec = (MppEncCodecCfg *)param;
+        mpp_log_f("MPP_ENC_SET_CODEC_CFG\n");
         ret = h264e_proc_h264_cfg(p, &cfg->codec.h264, &codec->h264);
     } break;
     case MPP_ENC_SET_SEI_CFG : {
     } break;
     case MPP_ENC_SET_SPLIT : {
+        mpp_log_f("MPP_ENC_SET_SPLIT\n");
         ret = h264e_proc_split_cfg(&cfg->split, param);
     } break;
     default:
@@ -714,6 +758,7 @@ static MPP_RET h264e_proc_hal(void *ctx, HalEncTask *task)
     task->syntax.data   = &p->syntax[0];
     task->syntax.number = p->syn_num;
     task->is_intra = p->slice.idr_flag;
+    h264->change = 0;
 
     h264e_dbg_func("leave\n");
 
