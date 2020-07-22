@@ -762,6 +762,12 @@ MPP_RET mpp_enc_refs_get_cpb(MppEncRefs refs, EncCpbStatus *status)
     }
 
     cpb->frm_idx++;
+    if (cpb->st_cfg_pos >= cfg->st_cfg_cnt) {
+        if (cfg->st_cfg_cnt > 1)
+            cpb->st_cfg_pos = 1;
+        else
+            cpb->st_cfg_pos = 0;
+    }
     st_cfg = &cfg->st_cfg[cpb->st_cfg_pos];
     /* step 2. updated by st_cfg */
     set_st_cfg_to_frm(frm, cpb->seq_idx++, st_cfg, seq_idr);
